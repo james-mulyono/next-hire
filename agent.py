@@ -229,5 +229,5 @@ def decide(c, spec, matches, pool, usd):
     if proposed == 0:
         msg = f"{c['name']}: no intro sent for {role} (${usd:.3f})"
         if best_held:
-            msg += f" — best was {best_held[1]} at {best_held[0]:.2f}; need someone with {best_held[2]}"
+            msg += f" — best was {best_held[1]} at {best_held[0]:.2f} (gap: {best_held[2]})"
         store.log("MATCH", msg, c["id"])
