@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge Console</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root { --bg:#0b0e13; --panel:#141922; --line:#252c38; --text:#e6edf3; --muted:#8b949e; --accent:#58d39b; --warn:#f0b72f; --bad:#ff7b72; --info:#79c0ff; --purple:#d2a8ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display:flex; flex-wrap:wrap; gap:10px 28px; align-items:baseline; padding:16px 20px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0; font-size:22px; }
+  .stat { font-size:15px; color:var(--muted); }
+  .stat b { color:var(--text); font-size:22px; font-variant-numeric:tabular-nums; }
+  .stat.good b { color:var(--accent); } .stat.held b { color:var(--warn); }
+  .live { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--accent); margin-right:6px; animation:pulse 1.6s infinite; }
+  @keyframes pulse { 50% { opacity:.3; } }
+  .grid { display:grid; grid-template-columns: minmax(0,1.5fr) minmax(0,1fr); gap:16px; padding:16px 20px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
+  .panel h2 { margin:0 0 10px; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  #log { height:440px; overflow-y:auto; font:13.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .d { padding:3px 0; border-bottom:1px solid #1b212b; word-break:break-word; }
+  .d .ts { color:var(--muted); margin-right:6px; }
+  .k { display:inline-block; min-width:74px; font-weight:700; margin-right:6px; }
+  .k-PROPOSE, .k-INTRO { color:var(--accent); } .k-HOLD, .k-PAUSE, .k-BUDGET { color:var(--warn); }
+  .k-LOOP, .k-ERROR, .k-STOP { color:var(--bad); } .k-ASK { color:var(--purple); } .k-FORECAST, .k-MATCH { color:var(--info); }
+  .k-SLEEP, .k-OBSERVE, .k-SYSTEM, .k-SIGNAL, .k-SKIP { color:var(--muted); }
+  .side { display:flex; flex-direction:column; gap:16px; min-width:0; }
+  .qrbox { display:flex; gap:14px; align-items:center; }
+  #qr { background:#fff; padding:8px; border-radius:8px; }
+  #joinurl { font-size:14px; word-break:break-all; color:var(--info); }
+  #pool { max-height:220px; overflow-y:auto; }
+  .p { padding:4px 0; border-bottom:1px solid #1b212b; font-size:14px; }
+  .p .tag { color:var(--muted); font-size:12px; }
+  .p.newp { animation: flash 2s; } @keyframes flash { from { background:#1d4630; } to { background:transparent; } }
+  #spark { width:100%; height:70px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(330px, 1fr)); gap:14px; padding:0 20px 30px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
+  .card h3 { margin:0; font-size:18px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); text-transform:uppercase; }
+  .badge.active { color:var(--accent); border-color:#23573a; } .badge.asking { color:var(--purple); border-color:var(--purple); }
+  .badge.stopped { color:var(--bad); border-color:var(--bad); } .badge.judge { color:var(--warn); border-color:var(--warn); }
+  .muted { color:var(--muted); } .small { font-size:13px; }
+  .fc { margin:10px 0; padding:10px; border-radius:8px; background:#0f141b; border:1px solid var(--line); }
+  .fc .role { font-size:17px; font-weight:700; } .conf { font-variant-numeric:tabular-nums; }
+  .conf.hi { color:var(--accent); } .conf.lo { color:var(--warn); }
+  ul.ev { margin:6px 0 0; padding-left:18px; font-size:13px; color:#c9d1d9; }
+  .intro { padding:8px 0; border-top:1px solid #1b212b; font-size:14px; }
+  .actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  button { background:#21262d; color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font:inherit; font-size:13px; cursor:pointer; }
+  button:hover { border-color:var(--muted); } button.go { background:#1f6f4a; border-color:#2ea043; } button.bad { color:var(--bad); }
+  .bar { height:6px; background:#21262d; border-radius:4px; overflow:hidden; margin-top:6px; } .bar i { display:block; height:100%; background:var(--accent); }
+  .bar i.over { background:var(--warn); }
+  .warnbox { background:#3b2e0b; border:1px solid var(--warn); color:var(--warn); padding:8px 12px; margin:12px 20px 0; border-radius:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="live"></span>Bridge</h1>
+  <div class="stat">Running unsupervised <b id="uptime">–</b></div>
+  <div class="stat"><b id="watching">–</b> companies</div>
+  <div class="stat"><b id="cands">–</b> candidates</div>
+  <div class="stat"><b id="spend">–</b> spent</div>
+  <div class="stat good">Intros proposed <b id="proposed">–</b></div>
+  <div class="stat held">Held back <b id="held">–</b></div>
+  <div class="stat good">Accepted <b id="accepted">–</b></div>
+</header>
+<div id="nollm" class="warnbox" hidden>No ANTHROPIC_API_KEY found. The agent is holding instead of guessing. Add the key to bridge/.env.</div>
+<div class="grid">
+  <div class="panel"><h2>Decision log</h2><div id="log"></div></div>
+  <div class="side">
+    <div class="panel"><h2>Join the pool</h2>
+      <div class="qrbox"><div id="qr"></div><div><div style="font-size:18px;font-weight:700">Scan to join (30s)</div><div id="joinurl"></div><div class="muted small">Opt-in only. Nothing shared without your yes.</div></div></div>
+    </div>
+    <div class="panel"><h2>Live pool <span id="joined" class="muted"></span></h2><div id="pool"></div></div>
+    <div class="panel"><h2>Spend <span id="cap" class="muted"></span></h2><svg id="spark" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
+  </div>
+</div>
+<div class="cards" id="cards"></div>
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hms = s => { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h ? `${h}h${String(m).padStart(2,'0')}m` : `${m}m${String(s%60).padStart(2,'0')}s`; };
+const clock = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+const joinUrl = location.origin + '/join';
+document.getElementById('joinurl').textContent = joinUrl;
+try { new QRCode(document.getElementById('qr'), {text: joinUrl, width: 132, height: 132}); } catch (e) { document.getElementById('qr').hidden = true; }
+
+async function post(url, body) {
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { alert(j.detail || 'Error'); throw new Error(j.detail); }
+  refresh(); return j;
+}
+const act = {
+  run: id => post(`/api/company/${id}/run`),
+  feedback: id => { const note = prompt('Founder feedback: is the forecast right? What do you actually need next?'); if (note) post(`/api/company/${id}/feedback`, {note}); },
+  answer: id => { const domain = prompt('Company website (e.g. acme.com) — leave blank if none'); if (domain === null) return;
+                  const slug = prompt('Job board slug on Ashby/Greenhouse/Lever (optional)') || ''; post(`/api/company/${id}/answer`, {domain, slug}); },
+  filled: id => { if (confirm('Mark the role filled and stop watching this company?')) post(`/api/company/${id}/filled`); },
+  squeeze: id => post(`/api/company/${id}/squeeze`),
+  request: id => { const contact = prompt('Founder contact to share if the candidate accepts (email):'); if (contact) post(`/api/intro/${id}/request`, {contact}); },
+  repropose: id => post(`/api/intro/${id}/repropose`),
+  add: () => { const name = prompt('Company name'); if (!name) return; const domain = prompt('Website (optional)') || ''; const slug = prompt('Job board slug (optional)') || ''; post('/api/company', {name, domain, slug}); },
+};
+
+let lastLogId = 0, seenPool = new Set(), firstPool = true;
+function renderLog(decisions) {
+  const box = document.getElementById('log');
+  const atTop = box.scrollTop < 30;
+  box.innerHTML = decisions.map(d => `<div class="d"><span class="ts">${clock(d.ts)}</span><span class="k k-${esc(d.kind)}">${esc(d.kind)}</span>${esc(d.message)}</div>`).join('');
+  if (atTop) box.scrollTop = 0;
+}
+function renderPool(pool, joined) {
+  document.getElementById('joined').textContent = joined ? `· ${joined} joined live` : '';
+  document.getElementById('pool').innerHTML = pool.map(p => {
+    const key = p.first_name + p.created_at, isNew = !firstPool && !seenPool.has(key); seenPool.add(key);
+    return `<div class="p ${isNew ? 'newp' : ''}"><b>${esc(p.first_name)}</b> — ${esc(p.strengths.slice(0, 70))} ${p.seeded ? '<span class="tag">(sample)</span>' : ''}</div>`;
+  }).join('');
+  firstPool = false;
+}
+function renderSpark(series, cap) {
+  const svg = document.getElementById('spark');
+  document.getElementById('cap').textContent = `· daily cap $${cap.toFixed(2)}`;
+  if (series.length < 2) { svg.innerHTML = ''; return; }
+  const t0 = series[0][0], t1 = Math.max(series[series.length-1][0], t0 + 1), ymax = Math.max(series[series.length-1][1] * 1.15, 0.05);
+  const pts = series.map(([t, v]) => `${((t - t0) / (t1 - t0) * 300).toFixed(1)},${(68 - v / ymax * 64).toFixed(1)}`).join(' ');
+  svg.innerHTML = `<polyline points="${pts}" fill="none" stroke="#58d39b" stroke-width="2" vector-effect="non-scaling-stroke"/>`;
+}
+function card(c) {
+  const f = c.forecast, top = f && f.forecasts[0];
+  const pct = Math.min(100, c.spend_hour / c.budget_hour * 100);
+  const status = c.status === 'active' && c.sleeping_s > 0 ? `sleeping ${hms(c.sleeping_s)}` : c.status;
+  let html = `<div class="card"><h3>${esc(c.name)} <span class="badge ${esc(c.status)}">${esc(status)}</span>${c.added_by === 'judge' ? '<span class="badge judge">judge</span>' : ''}</h3>
+    <div class="muted small">${esc(c.one_liner || c.domain || 'no public info yet')}${c.board ? ` · ${esc(c.board)} · ${c.postings} postings` : ''}</div>`;
+  if (c.judge_note) html += `<div class="small" style="margin-top:6px">Founder note: “${esc(c.judge_note)}”</div>`;
+  if (top) {
+    const conf = Number(top.confidence);
+    html += `<div class="fc"><div class="muted small">Forecast: next hire</div><div class="role">${esc(top.role)} <span class="conf ${conf >= 0.7 ? 'hi' : 'lo'}">${conf.toFixed(2)}</span></div>
+      <div class="small">${esc(top.why)}</div><ul class="ev">${top.evidence.slice(0, 3).map(e => `<li>${esc(e)}</li>`).join('')}</ul>
+      ${f.forecasts.slice(1).map(o => `<div class="muted small" style="margin-top:4px">Also: ${esc(o.role)} (${Number(o.confidence).toFixed(2)})</div>`).join('')}</div>`;
+  } else if (c.status === 'asking') {
+    html += `<div class="fc" style="border-color:var(--purple)">Stuck: no public job board or website found. Waiting for the founder.</div>`;
+  }
+  c.intros.forEach(i => {
+    html += `<div class="intro"><b>${esc(i.first_name)}</b> · ${Number(i.score).toFixed(2)} · <span class="muted">${esc(i.status)}</span><div class="small">${esc(i.reason)}</div>
+      ${i.candidate_contact ? `<div class="small" style="color:var(--accent)">Contact: ${esc(i.candidate_contact)}</div>` : ''}
+      <div class="actions">${i.status === 'proposed' ? `<button class="go" onclick="act.request(${i.id})">Request intro</button>` : ''}<button onclick="act.repropose(${i.id})">Propose again</button></div></div>`;
+  });
+  html += `<div class="small muted" style="margin-top:8px">Held back ${c.held} · $${c.spend_hour.toFixed(3)} of $${c.budget_hour.toFixed(2)}/h · total $${c.spend_total.toFixed(3)}</div>
+    <div class="bar"><i class="${pct >= 100 ? 'over' : ''}" style="width:${pct}%"></i></div>
+    <div class="actions">
+      ${c.status === 'active' ? `<button onclick="act.run(${c.id})">Check now</button>` : ''}
+      ${c.status === 'asking' ? `<button class="go" onclick="act.answer(${c.id})">Give website / board</button>` : ''}
+      <button onclick="act.feedback(${c.id})">Founder feedback</button>
+      <button onclick="act.squeeze(${c.id})">${c.budget_hour < 0.05 ? 'Restore budget' : 'Squeeze budget'}</button>
+      ${c.status !== 'stopped' ? `<button class="bad" onclick="act.filled(${c.id})">Role filled</button>` : ''}
+    </div></div>`;
+  return html;
+}
+async function refresh() {
+  let s;
+  try { s = await (await fetch('/api/state')).json(); } catch (e) { return; }
+  document.getElementById('uptime').textContent = hms(s.uptime_s);
+  document.getElementById('watching').textContent = s.counts.watching;
+  document.getElementById('cands').textContent = s.counts.candidates;
+  document.getElementById('spend').textContent = '$' + s.spend.total.toFixed(2);
+  document.getElementById('proposed').textContent = s.counts.proposed;
+  document.getElementById('held').textContent = s.counts.held;
+  document.getElementById('accepted').textContent = s.counts.accepted;
+  document.getElementById('nollm').hidden = s.llm;
+  renderLog(s.decisions); renderPool(s.pool, s.counts.joined); renderSpark(s.spend.series, s.spend.day_cap);
+  document.getElementById('cards').innerHTML = s.companies.map(card).join('') +
+    `<div class="card" style="display:flex;align-items:center;justify-content:center"><button onclick="act.add()">+ Add company</button></div>`;
+}
+refresh(); setInterval(refresh, 1500);
+</script>
+</body>
+</html>

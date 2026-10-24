@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Join Bridge</title>
+<style>
+  :root { --bg:#0e1116; --panel:#161b22; --line:#2a313c; --text:#e6edf3; --muted:#8b949e; --accent:#58d39b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:520px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  p.lead { color:var(--muted); margin:0 0 20px; }
+  label { display:block; font-weight:600; margin:14px 0 6px; }
+  label small { font-weight:400; color:var(--muted); }
+  input, textarea, select { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font:inherit; }
+  textarea { min-height:84px; resize:vertical; }
+  .consent { display:flex; gap:10px; align-items:flex-start; margin:18px 0; font-size:15px; }
+  .consent input { width:auto; margin-top:4px; }
+  button { width:100%; padding:14px; border:0; border-radius:10px; background:var(--accent); color:#06281a; font-weight:700; font-size:17px; }
+  button:disabled { opacity:.6; }
+  .err { color:#ff7b72; margin-top:10px; min-height:1em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Join Bridge</h1>
+  <p class="lead">30 seconds. An agent suggests you for a startup intro only when it's a strong fit, and nothing is shared without your yes.</p>
+  <form id="f">
+    <label>First name</label>
+    <input name="first_name" required maxlength="40" autocomplete="given-name">
+    <label>What you're great at <small>(be specific)</small></label>
+    <textarea name="strengths" required maxlength="400" placeholder="e.g. Built payments infra in Go; scaled Postgres to 10k QPS"></textarea>
+    <label>Roles you'd want</label>
+    <input name="roles" maxlength="300" placeholder="e.g. founding engineer, devrel">
+    <label>Seniority</label>
+    <select name="seniority"><option>student / new grad</option><option>junior</option><option selected>mid</option><option>senior</option><option>staff+ / lead</option></select>
+    <label>Location / remote</label>
+    <input name="location" maxlength="80" placeholder="e.g. SF or remote">
+    <label>Availability</label>
+    <select name="availability"><option>looking now</option><option selected>open to talk</option><option>summer internship</option><option>not now, maybe later</option></select>
+    <label>Contact to share after you accept <small>(email or phone)</small></label>
+    <input name="contact" maxlength="120" required>
+    <label>GitHub / portfolio <small>(optional, shown only after an accepted intro)</small></label>
+    <input name="link" maxlength="200">
+    <div class="consent"><input type="checkbox" name="consent" id="consent" required><label for="consent" style="margin:0;font-weight:400">Bridge may suggest me for startup intros. Nothing is shared without my yes, and I can pause or delete my data anytime.</label></div>
+    <button id="go">Join</button>
+    <div class="err" id="err"></div>
+  </form>
+</main>
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('go'), err = document.getElementById('err');
+  btn.disabled = true; err.textContent = '';
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  data.consent = document.getElementById('consent').checked;
+  try {
+    const r = await fetch('/api/join', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || 'Something went wrong');
+    location.href = '/inbox?t=' + encodeURIComponent(j.token) + '&new=1';
+  } catch (ex) { err.textContent = ex.message; btn.disabled = false; }
+});
+</script>
+</body>
+</html>
