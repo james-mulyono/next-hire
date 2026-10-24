@@ -9,6 +9,7 @@ import store
 
 FORECAST_MODEL = "claude-sonnet-5-5"
 MATCH_MODEL = "claude-sonnet-5-5"
+SCOPE_MODEL = FORECAST_MODEL
 PRICES = {  # USD per million tokens (input, output)
     "claude-sonnet-5-5": (2.00, 10.00),
     "claude-haiku-5-5": (0.10, 0.50),
@@ -139,9 +140,111 @@ def forecast(company, postings, added, removed, site_text):
     return call_json(FORECAST_MODEL, FORECAST_SYSTEM, "\n".join(lines), FORECAST_SCHEMA, "forecast", company["id"], effort="medium")
 
 
-def match(company, spec, candidates):
-    pool = [{"candidate_id": c["id"], "great_at": c["strengths"], "wants_roles": c["roles"], "seniority": c["seniority"],
+def _pool(candidates):
+    return [{"candidate_id": c["id"], "great_at": c["strengths"], "wants_roles": c["roles"], "seniority": c["seniority"],
              "location": c["location"], "availability": c["availability"],
              **({"resume_excerpt": c["resume_text"][:1500]} if c.get("resume_text") else {})} for c in candidates]
+
+
+def match(company, spec, candidates):
+    pool = _pool(candidates)
     user = f"Company: {company['name']}\nRole spec: {json.dumps(spec)}\n\nPool:\n{json.dumps(pool)}"
     return call_json(MATCH_MODEL, MATCH_SYSTEM, user, MATCH_SCHEMA, "match", company["id"], effort="low")
+
+
+URGENCIES = ["this week", "this month", "this quarter", "just exploring"]
+
+SCOPE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "role": _STR, "one_liner": _STR, "must_haves": _STRS, "nice_to_haves": _STRS, "dealbreakers": _STRS,
+        "seniority": _STR, "location": _STR, "urgency": {"type": "string", "enum": URGENCIES},
+        "clarifying_questions": _STRS,
+    },
+    "required": ["role", "one_liner", "must_haves", "nice_to_haves", "dealbreakers", "seniority", "location",
+                 "urgency", "clarifying_questions"],
+    "additionalProperties": False,
+}
+
+SCOPE_SYSTEM = """You turn a founder's hiring brief into a short role spec used to match opted-in candidates.
+The founder's own words are the source of truth. Their public website and job postings are background only.
+Rules:
+- Never invent requirements. Every must_have, nice_to_have and dealbreaker must trace back to something the founder wrote (brief, pasted JD, answers) or, for must/nice-to-haves only, their public website or postings. Keep the founder's wording where you can.
+- must_haves: skills the founder tagged plus anything they said the person needs. nice_to_haves: things mentioned as a plus, or qualities implied by their "someone like" example that they did not make essential.
+- dealbreakers: only what the founder listed as dealbreakers / not looking for, as short phrases. Never add your own.
+- "Someone like" describes a past great hire: extract qualities, never names.
+- seniority and location: from the brief or pasted JD; "unspecified" if not given. urgency: from start timing.
+- Postings may clarify the stack but must not override or add to what the founder asked for.
+- one_liner: one plain sentence a candidate would read describing the role.
+- clarifying_questions: 0-2 short questions, only when the answer would materially change who you would match (e.g. two plausible roles, contradictory signals). Do not ask about things that can stay unspecified. If the founder already answered your questions, return []."""
+
+_BRIEF_LABELS = [
+    ("description", "Describe the person who'd make your next 3 months easier"),
+    ("someone_like", "Someone like (a past great hire/teammate)"),
+    ("dealbreakers", "Dealbreakers / not looking for"),
+    ("seniority", "Seniority"),
+    ("location", "Location / remote"),
+    ("start_timing", "Start timing"),
+]
+
+
+def _brief_lines(brief):
+    lines = [f"- {label}: {brief[k]}" for k, label in _BRIEF_LABELS if brief.get(k)]
+    if brief.get("skills"):
+        lines.append(f"- Must-have skills (tagged by founder): {', '.join(brief['skills'])}")
+    if brief.get("jd_text"):
+        lines.append(f"- Pasted JD / doc: {brief['jd_text'][:4000]}")
+    for qa in brief.get("answers") or []:
+        if qa.get("a"):
+            lines.append(f"- Founder answered \"{qa['q']}\": {qa['a']}")
+    return lines
+
+
+def scope_from_brief(brief, website_text, postings):
+    """Founder brief (+ public site/postings as background) -> role spec. brief carries company_name and answers."""
+    lines = [f"Company: {brief.get('company_name', '')}" + (f" ({brief['domain']})" if brief.get("domain") else ""),
+             "FOUNDER HIRING BRIEF (first-hand, highest priority):", *_brief_lines(brief),
+             f"Public website text (background): {website_text[:2000] if website_text else '(none)'}"]
+    if postings:
+        lines.append(f"Open postings (background, {len(postings)}): " + "; ".join(p["title"] for p in postings[:40]))
+    else:
+        lines.append("Open postings: none found on a public job board.")
+    return call_json(SCOPE_MODEL, SCOPE_SYSTEM, "\n".join(lines), SCOPE_SCHEMA, "scope", brief["company_id"], effort="medium")
+
+
+BRIEF_PARTS = ["must_have", "nice_to_have", "description", "someone_like", "seniority", "location", "jd"]
+
+MATCH_BRIEF_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "excluded": {"type": "array", "items": {
+            "type": "object",
+            "properties": {"candidate_id": {"type": "integer"}, "dealbreaker": _STR, "evidence": _STR},
+            "required": ["candidate_id", "dealbreaker", "evidence"], "additionalProperties": False}},
+        "matches": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "candidate_id": {"type": "integer"}, "score": _NUM, "reason": _STR, "gap": _STR,
+                "cites": {"type": "array", "items": {
+                    "type": "object",
+                    "properties": {"brief_part": {"type": "string", "enum": BRIEF_PARTS}, "brief_text": _STR},
+                    "required": ["brief_part", "brief_text"], "additionalProperties": False}}},
+            "required": ["candidate_id", "score", "reason", "gap", "cites"], "additionalProperties": False}},
+    },
+    "required": ["excluded", "matches"],
+    "additionalProperties": False,
+}
+
+MATCH_BRIEF_SYSTEM = MATCH_SYSTEM + """
+The role comes from the founder's own hiring brief.
+- excluded: every person whose own words hit one of the founder's dealbreakers. dealbreaker: the dealbreaker text; evidence: what the person wrote. Excluded people must NOT appear in matches, however strong otherwise.
+- cites: for each match, 1-3 parts of the brief the person satisfies. brief_text must be copied word for word from the brief or the role spec (e.g. a must-have, a phrase from the description)."""
+
+
+def match_brief(company, brief, candidates):
+    scope = brief["scope"]
+    pool = _pool(candidates)
+    spec = {k: scope[k] for k in ("role", "one_liner", "must_haves", "nice_to_haves", "dealbreakers", "seniority", "location")}
+    user = (f"Company: {company['name']}\nRole spec (from the founder's brief): {json.dumps(spec)}\n"
+            "Founder's own words:\n" + "\n".join(_brief_lines(brief)) + f"\n\nPool:\n{json.dumps(pool)}")
+    return call_json(MATCH_MODEL, MATCH_BRIEF_SYSTEM, user, MATCH_BRIEF_SCHEMA, "match", company["id"], effort="low")

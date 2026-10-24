@@ -44,8 +44,9 @@ def cycle():
             store.update_company(c["id"], sleep_until=time.time() + 120)
 
 
-def observe(c):
-    """Fetch public signals if due. Returns (postings, added, removed, site_text) or None if the agent is stuck."""
+def observe(c, has_brief=False):
+    """Fetch public signals if due. Returns (postings, added, removed, site_text) or None if the agent is stuck.
+    With an active founder brief, public signals are background only, so a missing board never blocks."""
     snap = store.snapshot(c["id"])
     if snap and time.time() - c["last_observed"] < OBSERVE_EVERY_S:
         return snap["postings"], [], [], snap["site_text"] or ""
@@ -64,10 +65,11 @@ def observe(c):
                 store.update_company(c["id"], attempts=attempts, sleep_until=time.time() + RETRY_SOON_S)
                 store.log("OBSERVE", f"{c['name']}: no public job board at '{slug}' on Ashby/Greenhouse/Lever (attempt {attempts}/{governor.MAX_ATTEMPTS})", c["id"])
                 return None
-            if c["domain"]:
+            if c["domain"] or has_brief:
                 store.update_company(c["id"], board_type="none", attempts=0)
                 c["board_type"] = "none"
-                store.log("OBSERVE", f"{c['name']}: no public job board after {attempts} tries → working from the website only", c["id"])
+                source = "the website" if c["domain"] else "the founder's brief"
+                store.log("OBSERVE", f"{c['name']}: no public job board after {attempts} tries → working from {source} only", c["id"])
             else:
                 store.update_company(c["id"], status="asking", attempts=attempts)
                 store.log("ASK", f"{c['name']}: stuck — tried '{slug}' on Ashby, Greenhouse and Lever {attempts}× and no website is known. "
@@ -88,6 +90,9 @@ def observe(c):
             errors.append(f"website: {type(e).__name__}")
 
     if errors and not postings and not site_text:
+        if has_brief:  # keep the last snapshot; the brief carries on without fresh signals
+            store.log("OBSERVE", f"{c['name']}: fetch failed ({'; '.join(errors)}) → continuing from the founder's brief", c["id"])
+            return None
         attempts = c["attempts"] + 1
         if attempts >= governor.MAX_ATTEMPTS:
             store.update_company(c["id"], status="asking", attempts=attempts)
@@ -114,11 +119,26 @@ def observe(c):
 
 
 def process(c):
-    obs = observe(c)
-    if obs is None:
+    # Role source priority: (a) an active founder brief, used directly; (b) the job-board forecast only when there is none.
+    briefs = store.briefs(c["id"])
+    gate = governor.brief_gate(c, briefs)
+    if gate:
+        status, why = gate
+        store.update_company(c["id"], status=status)
+        store.log("STOP", f"{c['name']}: {why}", c["id"])
         return
+    active = [b for b in briefs if b["status"] == "active"]
+    obs = observe(c, bool(active))
+    if obs is None:
+        if not active:
+            return
+        snap = store.snapshot(c["id"])
+        obs = (snap["postings"], [], [], snap["site_text"] or "") if snap else ([], [], [], "")
     postings, added, removed, site_text = obs
     c = store.company(c["id"])
+    if active:
+        process_briefs(c, active, postings, added, site_text)
+        return
 
     # Forecast only when the inputs changed (input hashing: never pay twice for the same question).
     f_inputs = {"postings": sorted(p["title"] for p in postings), "site": site_text[:2000], "note": c["judge_note"] or ""}
@@ -200,7 +220,7 @@ def process(c):
     _sleep(c, governor.ACTIVE_SLEEP_MIN, None)
 
 
-def decide(c, spec, matches, pool, usd):
+def decide(c, spec, matches, pool, usd, brief_id=None):
     by_id = {p["id"]: p for p in pool}
     role = spec["role"]
     proposed, best_held = 0, None
@@ -210,10 +230,17 @@ def decide(c, spec, matches, pool, usd):
             continue
         score = float(m["score"])
         verdict, why = governor.check_intro(c, cand, score, role)
+        if verdict == "PROPOSE" and m.get("uncited"):
+            verdict, why = "HOLD", f"{cand['first_name']} ({score:.2f}) — match reason didn't cite any part of the brief"
+        if verdict == "PROPOSE" and brief_id:
+            live, stop_why = governor.brief_live(brief_id)
+            if not live:
+                store.log("STOP", f"{c['name']}: {stop_why} → not proposing", c["id"])
+                return
         if verdict == "PROPOSE" and proposed < governor.MAX_PROPOSALS_PER_RUN:
             now = time.time()
-            store.ex("INSERT INTO intros(company_id, candidate_id, role, score, reason, status, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?)",
-                     (c["id"], cand["id"], role, score, m["reason"], "proposed", now, now))
+            store.ex("INSERT INTO intros(company_id, candidate_id, role, score, reason, status, created_at, updated_at, brief_id) VALUES(?,?,?,?,?,?,?,?,?)",
+                     (c["id"], cand["id"], role, score, m["reason"], "proposed", now, now, brief_id))
             store.ex("DELETE FROM holds WHERE company_id=? AND candidate_id=?", (c["id"], cand["id"]))
             store.log("PROPOSE", f"{c['name']}: intro {why} — {m['reason']}", c["id"])
             proposed += 1
@@ -227,7 +254,143 @@ def decide(c, spec, matches, pool, usd):
         elif verdict == "LOOP":
             store.log("LOOP", f"{c['name']}: {why}", c["id"])
     if proposed == 0:
-        msg = f"{c['name']}: no intro sent for {role} (${usd:.3f})"
+        msg = f"{c['name']}: no intro sent for {role}{' (founder brief)' if brief_id else ''} (${usd:.3f})"
         if best_held:
             msg += f" — best was {best_held[1]} at {best_held[0]:.2f} (gap: {best_held[2]})"
         store.log("MATCH", msg, c["id"])
+
+
+# ---------- founder hiring briefs ----------
+CITE_LABEL = {"must_have": "must-have", "nice_to_have": "nice-to-have", "description": "brief", "someone_like": "someone-like",
+              "seniority": "seniority", "location": "location", "jd": "JD"}
+
+
+def _brief_text(b):
+    """Everything the founder wrote (plus the spec derived from it): what match reasons may cite."""
+    scope = b["scope"] or {}
+    parts = [b[k] or "" for k in ("description", "someone_like", "seniority", "location", "jd_text")] + b["skills"]
+    parts += [qa.get("a", "") for qa in b["answers"] or []]
+    parts += scope.get("must_haves", []) + scope.get("nice_to_haves", []) + [scope.get(k, "") for k in ("role", "one_liner", "seniority", "location")]
+    return " | ".join(parts)
+
+
+def process_briefs(c, briefs, postings, added, site_text):
+    pool = store.q("SELECT * FROM candidates WHERE status='active' ORDER BY id")
+    retry_s = None
+    for b in briefs:
+        ok, why = governor.brief_live(b["id"])
+        if not ok:
+            store.log("STOP", f"{c['name']}: {why} → skipping, no spend", c["id"])
+            continue
+        b, hold_min = scope_brief(c, b, postings, site_text)
+        if hold_min:
+            _sleep(c, hold_min, None)
+            return
+        # Deterministic asks, raised once each (hashed).
+        for ask in (governor.brief_mismatch(b, governor.new_postings_since(b, postings, added)), governor.brief_stale(b)):
+            if ask:
+                governor.ask_founder(c, b, *ask)
+        wait = match_brief(c, b, pool)
+        if wait:
+            retry_s = wait if retry_s is None else min(retry_s, wait)
+    minutes, why = governor.cadence(briefs)
+    if retry_s is not None and retry_s < minutes * 60:
+        store.update_company(c["id"], sleep_until=time.time() + retry_s)
+        return
+    _sleep(c, minutes, why)
+
+
+def scope_brief(c, b, postings, site_text):
+    """Turn the brief into a role spec when it (or the founder's answers) changed. Returns (brief, hold_minutes)."""
+    answers = [qa for qa in b["answers"] or [] if qa.get("a")]
+    s_hash = _hash({**{k: b[k] for k in store.BRIEF_FIELDS}, "answers": answers})
+    if b["scope"] and b["scope_hash"] == s_hash:
+        return b, None
+    ok, why = governor.can_spend(c)
+    if not ok:
+        store.log("PAUSE", f"{c['name']}: budget — {why}. Pausing brief scoping until budget frees up.", c["id"])
+        return b, 10
+    if not llm.available():
+        store.log("HOLD", f"{c['name']}: no LLM key configured — holding the brief instead of guessing", c["id"])
+        return b, 2
+    try:
+        data, usd = llm.scope_from_brief({**b, "company_name": c["name"], "domain": c["domain"]}, site_text, postings)
+    except llm.LLMError as e:
+        store.log("ERROR", f"{c['name']}: scoping the brief failed ({e}) → holding, will retry", c["id"])
+        return b, 2
+
+    # Never invent requirements: drop anything not traceable to the founder's words (dealbreakers) or their public site/postings.
+    founder_text = " ".join([b[k] or "" for k in ("description", "someone_like", "dealbreakers", "seniority", "location", "jd_text")]
+                            + b["skills"] + [qa["a"] for qa in answers])
+    public_text = " ".join([site_text or ""] + [p["title"] for p in postings])
+    dropped = []
+    for key, source in (("must_haves", founder_text + " " + public_text), ("nice_to_haves", founder_text + " " + public_text),
+                        ("dealbreakers", founder_text)):
+        data[key], gone = governor.grounded(data[key], source)
+        dropped += gone
+    # One clarification round at most: once the founder answered (or skipped), don't ask again.
+    data["clarifying_questions"] = [] if b["answers"] is not None else data["clarifying_questions"][:2]
+
+    store.update_brief(b["id"], scope_json=json.dumps(data), scope_hash=s_hash, scoped_at=time.time(), match_hash=None)
+    re_ = "re-scoped" if b["scope"] else "scoped"
+    store.log("SCOPE", f"{c['name']}: founder brief {re_} → {data['role']} — {data['one_liner']} · must-haves: {', '.join(data['must_haves'][:4]) or 'none'}"
+                       f" · dealbreakers (hard filter): {', '.join(data['dealbreakers'][:3]) or 'none'} (${usd:.3f})", c["id"])
+    if dropped:
+        store.log("SCOPE", f"{c['name']}: dropped {len(dropped)} requirement(s) the founder never wrote: {'; '.join(dropped[:3])}", c["id"])
+    if data["clarifying_questions"]:
+        store.log("ASK_FOUNDER", f"{c['name']}: {len(data['clarifying_questions'])} clarifying question(s) on the brief page — "
+                                 f"\"{data['clarifying_questions'][0]}\" (matching on the current scope meanwhile)", c["id"])
+    return store.brief(b["id"]), None
+
+
+def match_brief(c, b, pool):
+    """Match one scoped brief against the pool. Returns seconds to wait before retrying, or None."""
+    if not pool or not b["scope"]:
+        return None
+    m_hash = _hash({"scope": b["scope_hash"], "pool": [p["id"] for p in pool]})
+    if m_hash == b["match_hash"]:
+        return None
+    wait = governor.MATCH_MIN_INTERVAL_S - (time.time() - (b["last_match_at"] or 0))
+    if wait > 0:
+        return wait
+    ok, why = governor.can_spend(c)
+    if not ok:
+        store.log("PAUSE", f"{c['name']}: budget — {why}. Pausing brief matching until budget frees up.", c["id"])
+        return 600
+    ok, why = governor.brief_live(b["id"])
+    if not ok:
+        store.log("STOP", f"{c['name']}: {why} → not matching", c["id"])
+        return None
+    try:
+        data, usd = llm.match_brief(c, b, pool)
+    except llm.LLMError as e:
+        store.log("ERROR", f"{c['name']}: brief match failed ({e}) → holding, will retry", c["id"])
+        return 120
+    now = time.time()
+    store.update_brief(b["id"], match_hash=m_hash, last_match_at=now)
+    store.update_company(c["id"], last_match_at=now, backoff_idx=0)
+
+    # Dealbreakers are hard filters: anyone flagged is removed outright, whatever their score.
+    by_id = {p["id"]: p for p in pool}
+    # An exclusion must name one of the founder's own dealbreakers, so the model can't invent a filter.
+    dealbreakers = " ".join(b["scope"]["dealbreakers"] + [b["dealbreakers"] or ""])
+    excluded = {x["candidate_id"]: x for x in data["excluded"]
+                if x["candidate_id"] in by_id and b["scope"]["dealbreakers"] and governor.grounded([x["dealbreaker"]], dealbreakers)[0]}
+    if excluded:
+        names = [f"{by_id[i]['first_name']} (\u201c{x['dealbreaker']}\u201d: {x['evidence']})" for i, x in excluded.items()]
+        store.log("EXCLUDE", f"{c['name']}: dealbreaker filter removed {len(names)} — " + "; ".join(names[:4])
+                             + (f" +{len(names) - 4} more" if len(names) > 4 else ""), c["id"])
+        for i in excluded:
+            store.ex("DELETE FROM holds WHERE company_id=? AND candidate_id=?", (c["id"], i))
+    matches = [m for m in data["matches"] if m["candidate_id"] not in excluded]
+
+    # Each reason must cite the part of the brief it satisfies; uncited matches are held, never proposed.
+    text = _brief_text(b)
+    for m in matches:
+        cites = governor.valid_cites(m["cites"], text)
+        if cites:
+            m["reason"] = f"{m['reason']} — satisfies " + "; ".join(f"{CITE_LABEL.get(x['brief_part'], x['brief_part'])} \u201c{x['brief_text']}\u201d" for x in cites[:3])
+        else:
+            m["uncited"] = True
+    decide(c, b["scope"], matches, pool, usd, brief_id=b["id"])
+    return None

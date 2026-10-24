@@ -25,11 +25,12 @@
   .d .ts { color:var(--muted); margin-right:6px; }
   .k { display:inline-block; min-width:74px; font-weight:700; margin-right:6px; }
   .k-PROPOSE, .k-INTRO { color:var(--accent); } .k-HOLD, .k-PAUSE, .k-BUDGET { color:var(--warn); }
-  .k-LOOP, .k-ERROR, .k-STOP { color:var(--bad); } .k-ASK { color:var(--purple); } .k-FORECAST, .k-MATCH { color:var(--info); }
+  .k-LOOP, .k-ERROR, .k-STOP { color:var(--bad); } .k-ASK, .k-ASK_FOUNDER { color:var(--purple); } .k-FORECAST, .k-MATCH, .k-SCOPE { color:var(--info); }
+  .k-EXCLUDE { color:var(--warn); }
   .k-SLEEP, .k-OBSERVE, .k-SYSTEM, .k-SIGNAL, .k-SKIP { color:var(--muted); }
   .side { display:flex; flex-direction:column; gap:16px; min-width:0; }
   .qrbox { display:flex; gap:14px; align-items:center; }
-  #qr { background:#fff; padding:8px; border-radius:8px; }
+  #qr, #qrf { background:#fff; padding:8px; border-radius:8px; }
   #joinurl { font-size:14px; word-break:break-all; color:var(--info); }
   #pool { max-height:220px; overflow-y:auto; }
   .p { padding:4px 0; border-bottom:1px solid #1b212b; font-size:14px; }
@@ -42,6 +43,11 @@
   .badge { font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); text-transform:uppercase; }
   .badge.active { color:var(--accent); border-color:#23573a; } .badge.asking { color:var(--purple); border-color:var(--purple); }
   .badge.stopped { color:var(--bad); border-color:var(--bad); } .badge.judge { color:var(--warn); border-color:var(--warn); }
+  .badge.paused { color:var(--warn); border-color:var(--warn); }
+  .badge.src-brief { color:#06281a; background:var(--accent); border-color:var(--accent); } .badge.src-forecast { color:var(--info); border-color:#1f4a73; }
+  .fc.brief { border-color:#23573a; } .chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .chip { font-size:12px; padding:1px 8px; border-radius:99px; border:1px solid var(--line); } .chip.hard { color:var(--bad); border-color:#5c2a27; }
+  .askbox { margin-top:8px; padding:8px; border-radius:8px; border:1px solid var(--purple); color:var(--purple); font-size:13px; }
   .muted { color:var(--muted); } .small { font-size:13px; }
   .fc { margin:10px 0; padding:10px; border-radius:8px; background:#0f141b; border:1px solid var(--line); }
   .fc .role { font-size:17px; font-weight:700; } .conf { font-variant-numeric:tabular-nums; }
@@ -74,6 +80,9 @@
     <div class="panel"><h2>Join the pool</h2>
       <div class="qrbox"><div id="qr"></div><div><div style="font-size:18px;font-weight:700">Scan to join (30s)</div><div id="joinurl"></div><div class="muted small">Opt-in only. Nothing shared without your yes.</div></div></div>
     </div>
+    <div class="panel"><h2>Founders: post a hiring brief</h2>
+      <div class="qrbox"><div id="qrf"></div><div><div style="font-size:18px;font-weight:700">Tell the agent who you need (60s)</div><div id="founderurl" style="font-size:14px;word-break:break-all;color:var(--info)"></div><div class="muted small">Re-scoped and matched within one cycle.</div></div></div>
+    </div>
     <div class="panel"><h2>Live pool <span id="joined" class="muted"></span></h2><div id="pool"></div></div>
     <div class="panel"><h2>Spend <span id="cap" class="muted"></span></h2><svg id="spark" viewBox="0 0 300 70" preserveAspectRatio="none"></svg></div>
   </div>
@@ -86,6 +95,9 @@ const clock = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit', mi
 const joinUrl = location.origin + '/join';
 document.getElementById('joinurl').textContent = joinUrl;
 try { new QRCode(document.getElementById('qr'), {text: joinUrl, width: 132, height: 132}); } catch (e) { document.getElementById('qr').hidden = true; }
+const founderUrl = location.origin + '/founder';
+document.getElementById('founderurl').textContent = founderUrl;
+try { new QRCode(document.getElementById('qrf'), {text: founderUrl, width: 132, height: 132}); } catch (e) { document.getElementById('qrf').hidden = true; }
 
 async function post(url, body) {
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body || {})});
@@ -132,10 +144,21 @@ function card(c) {
   const f = c.forecast, top = f && f.forecasts[0];
   const pct = Math.min(100, c.spend_hour / c.budget_hour * 100);
   const status = c.status === 'active' && c.sleeping_s > 0 ? `sleeping ${hms(c.sleeping_s)}` : c.status;
-  let html = `<div class="card"><h3>${esc(c.name)} <span class="badge ${esc(c.status)}">${esc(status)}</span>${c.added_by === 'judge' ? '<span class="badge judge">judge</span>' : ''}</h3>
+  const src = c.source === 'brief' ? '<span class="badge src-brief">Founder brief</span>' : '<span class="badge src-forecast">Forecast from job board</span>';
+  let html = `<div class="card"><h3>${esc(c.name)} <span class="badge ${esc(c.status)}">${esc(status)}</span>${c.added_by === 'judge' ? '<span class="badge judge">judge</span>' : ''}${src}</h3>
     <div class="muted small">${esc(c.one_liner || c.domain || 'no public info yet')}${c.board ? ` · ${esc(c.board)} · ${c.postings} postings` : ''}</div>`;
   if (c.judge_note) html += `<div class="small" style="margin-top:6px">Founder note: “${esc(c.judge_note)}”</div>`;
-  if (top) {
+  c.briefs.forEach(b => {
+    const s = b.scope;
+    html += `<div class="fc brief"><div class="muted small">Founder brief${b.seeded ? ' (sample)' : ''} · ${esc(b.urgency)}</div>` + (s
+      ? `<div class="role">${esc(s.role)}</div><div class="small">${esc(s.one_liner)}</div>
+         <div class="chips">${s.must_haves.slice(0, 5).map(m => `<span class="chip">${esc(m)}</span>`).join('')}${s.dealbreakers.slice(0, 3).map(m => `<span class="chip hard">✕ ${esc(m)}</span>`).join('')}</div>
+         ${b.awaiting_answers ? '<div class="muted small" style="margin-top:4px">Waiting on clarifying answers (matching meanwhile)</div>' : ''}`
+      : `<div class="small">Scoping… “${esc(b.description.slice(0, 120))}”</div>`) + `</div>`;
+  });
+  if (c.suggestion) html += `<div class="muted small">${esc(c.suggestion)} <span class="muted">(forecast from job board)</span></div>`;
+  c.asks.forEach(a => { html += `<div class="askbox">Asked founder: ${esc(a.message)}</div>`; });
+  if (top && !c.briefs.length) {
     const conf = Number(top.confidence);
     html += `<div class="fc"><div class="muted small">Forecast: next hire</div><div class="role">${esc(top.role)} <span class="conf ${conf >= 0.7 ? 'hi' : 'lo'}">${conf.toFixed(2)}</span></div>
       <div class="small">${esc(top.why)}</div><ul class="ev">${top.evidence.slice(0, 3).map(e => `<li>${esc(e)}</li>`).join('')}</ul>
@@ -156,6 +179,7 @@ function card(c) {
     <div class="actions">
       ${c.status === 'active' ? `<button onclick="act.run(${c.id})">Check now</button>` : ''}
       ${c.status === 'asking' ? `<button class="go" onclick="act.answer(${c.id})">Give website / board</button>` : ''}
+      <button onclick="window.open('/founder?company=${c.id}')">Hiring brief ↗</button>
       <button onclick="act.feedback(${c.id})">Founder feedback</button>
       <button onclick="act.squeeze(${c.id})">${c.budget_hour < 0.05 ? 'Restore budget' : 'Squeeze budget'}</button>
       ${c.status !== 'stopped' ? `<button class="bad" onclick="act.filled(${c.id})">Role filled</button>` : ''}
