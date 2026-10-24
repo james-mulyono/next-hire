@@ -5,3 +5,5 @@
 *.db-shm
 __pycache__/
 .DS_Store
+server.log
+tunnel.log
