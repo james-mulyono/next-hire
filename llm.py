@@ -170,8 +170,8 @@ SCOPE_SYSTEM = """You turn a founder's hiring brief into a short role spec used 
 The founder's own words are the source of truth. Their public website and job postings are background only.
 Rules:
 - Never invent requirements. Every must_have, nice_to_have and dealbreaker must trace back to something the founder wrote (brief, pasted JD, answers) or, for must/nice-to-haves only, their public website or postings. Keep the founder's wording where you can.
-- must_haves: skills the founder tagged plus anything they said the person needs. nice_to_haves: things mentioned as a plus, or qualities implied by their "someone like" example that they did not make essential.
-- dealbreakers: only what the founder listed as dealbreakers / not looking for, as short phrases. Never add your own.
+- must_haves: 3-5 qualifications a candidate must already have (skills, experience, degree), from the tags and what the founder said the person needs. Job duties and responsibilities ("present your work", "communicate status") are not qualifications: fold the important ones into one skill (e.g. "A/B testing and experiment analysis") and drop generic soft skills. nice_to_haves: things mentioned as a plus, or qualities implied by their "someone like" example that they did not make essential.
+- dealbreakers: only what the founder listed as dealbreakers / not looking for, as short phrases describing the person to EXCLUDE (e.g. "Bachelor's only, no PhD"). Never add your own. If the founder's dealbreaker text also states a requirement (e.g. "need PhD"), put that requirement in must_haves and keep only the excluded case here. A dealbreaker must never contradict a must-have.
 - "Someone like" describes a past great hire: extract qualities, never names.
 - seniority and location: from the brief or pasted JD; "unspecified" if not given. urgency: from start timing.
 - Postings may clarify the stack but must not override or add to what the founder asked for.

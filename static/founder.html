@@ -164,7 +164,7 @@ function view(d) {
     h += `<div class="card"><div class="muted small">Agent's read of your brief</div><h2>${esc(s.role)}</h2><div>${esc(s.one_liner)}</div>
       <div class="k">Must-haves</div>${list(s.must_haves)}
       ${s.nice_to_haves.length ? `<div class="k">Nice-to-haves</div>${list(s.nice_to_haves)}` : ''}
-      <div class="k hard">Dealbreakers (hard filter)</div>${list(s.dealbreakers)}
+      <div class="k hard">Excluded if (hard filter)</div>${list(s.dealbreakers)}
       <div class="k">Seniority · location · urgency</div><div>${esc(s.seniority)} · ${esc(s.location)} · ${esc(s.urgency)}</div></div>`;
     if (s.clarifying_questions.length && b.answers === null) {
       h += `<div class="card ask"><h2>Quick question${s.clarifying_questions.length > 1 ? 's' : ''}</h2>
