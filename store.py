@@ -39,10 +39,29 @@ CREATE TABLE IF NOT EXISTS decisions (
 CREATE TABLE IF NOT EXISTS spend (
   id INTEGER PRIMARY KEY, ts REAL, company_id INTEGER, model TEXT, purpose TEXT,
   input_tokens INTEGER, output_tokens INTEGER, usd REAL);
+CREATE TABLE IF NOT EXISTS hiring_briefs (
+  id INTEGER PRIMARY KEY, company_id INTEGER NOT NULL, token TEXT UNIQUE,
+  description TEXT NOT NULL, someone_like TEXT, dealbreakers TEXT, skills_json TEXT DEFAULT '[]',
+  seniority TEXT, location TEXT, start_timing TEXT, jd_text TEXT,
+  status TEXT DEFAULT 'active', seeded INTEGER DEFAULT 0, created_at REAL, updated_at REAL, confirmed_at REAL,
+  answers_json TEXT, scope_json TEXT, scope_hash TEXT, scoped_at REAL, match_hash TEXT, last_match_at REAL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS asks (
+  id INTEGER PRIMARY KEY, hash TEXT UNIQUE, company_id INTEGER, brief_id INTEGER, kind TEXT, message TEXT,
+  status TEXT DEFAULT 'open', ts REAL);
 """
+
+BRIEF_FIELDS = ("description", "someone_like", "dealbreakers", "skills", "seniority", "location", "start_timing", "jd_text")
+BRIEF_STATUSES = ("active", "filled", "paused")
+
+
+def _ensure_column(table, col, decl):
+    if col not in {r[1] for r in _conn.execute(f"PRAGMA table_info({table})")}:
+        _conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+
 
 with _lock:
     _conn.executescript(SCHEMA)
+    _ensure_column("intros", "brief_id", "INTEGER")  # DBs created before founder briefs existed
     _conn.commit()
 
 
@@ -120,3 +139,40 @@ def wake_active():
     for r in rows:
         update_company(r["id"], sleep_until=0)
     return len(rows)
+
+
+def _brief(row):
+    if row:
+        row["skills"] = json.loads(row["skills_json"] or "[]")
+        row["scope"] = json.loads(row["scope_json"]) if row["scope_json"] else None
+        row["answers"] = json.loads(row["answers_json"]) if row["answers_json"] is not None else None
+    return row
+
+
+def brief(brief_id):
+    return _brief(one("SELECT * FROM hiring_briefs WHERE id=?", (brief_id,)))
+
+
+def brief_by_token(token):
+    return _brief(one("SELECT * FROM hiring_briefs WHERE token=?", (token or "",)))
+
+
+def briefs(company_id, status=None):
+    """A company's briefs, newest first; optionally only one status."""
+    if status:
+        rows = q("SELECT * FROM hiring_briefs WHERE company_id=? AND status=? ORDER BY id DESC", (company_id, status))
+    else:
+        rows = q("SELECT * FROM hiring_briefs WHERE company_id=? ORDER BY id DESC", (company_id,))
+    return [_brief(r) for r in rows]
+
+
+def update_brief(brief_id, **fields):
+    fields["updated_at"] = time.time()
+    cols = ", ".join(f"{k}=?" for k in fields)
+    ex(f"UPDATE hiring_briefs SET {cols} WHERE id=?", (*fields.values(), brief_id))
+
+
+def open_asks(company_id, brief_id=None):
+    if brief_id is None:
+        return q("SELECT * FROM asks WHERE company_id=? AND status='open' ORDER BY id DESC", (company_id,))
+    return q("SELECT * FROM asks WHERE company_id=? AND brief_id=? AND status='open' ORDER BY id DESC", (company_id, brief_id))

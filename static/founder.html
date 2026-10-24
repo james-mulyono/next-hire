@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridge Hiring Brief</title>
+<style>
+  :root { --bg:#0e1116; --panel:#161b22; --line:#2a313c; --text:#e6edf3; --muted:#8b949e; --accent:#58d39b; --warn:#f0b72f; --bad:#ff7b72; --purple:#d2a8ff; --info:#79c0ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:0 0 6px; }
+  p.lead { color:var(--muted); margin:0 0 16px; }
+  label { display:block; font-weight:600; margin:14px 0 6px; }
+  label small, .muted { font-weight:400; color:var(--muted); }
+  input, textarea, select { width:100%; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--text); font:inherit; }
+  textarea { min-height:76px; resize:vertical; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width: 380px) { .row2 { grid-template-columns:1fr; } }
+  .pills { display:flex; flex-wrap:wrap; gap:8px; }
+  .pills input { display:none; }
+  .pills label { margin:0; font-weight:500; padding:8px 12px; border:1px solid var(--line); border-radius:99px; background:var(--panel); cursor:pointer; }
+  .pills input:checked + label { border-color:var(--accent); color:var(--accent); }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; padding:8px; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+  .tags input { flex:1; min-width:120px; border:0; padding:4px; background:transparent; }
+  .tags input:focus { outline:none; }
+  .chip { display:inline-flex; gap:6px; align-items:center; padding:3px 10px; border-radius:99px; background:#1f2a37; border:1px solid var(--line); font-size:14px; }
+  .chip button { background:none; border:0; color:var(--muted); padding:0; width:auto; font-size:15px; }
+  details { margin-top:14px; } summary { cursor:pointer; color:var(--info); }
+  button { width:100%; padding:14px; border:0; border-radius:10px; background:var(--accent); color:#06281a; font-weight:700; font-size:17px; cursor:pointer; }
+  button:disabled { opacity:.6; }
+  button.ghost { background:transparent; border:1px solid var(--line); color:var(--text); font-weight:500; font-size:15px; padding:10px; }
+  button.bad { color:var(--bad); }
+  .err { color:var(--bad); margin-top:10px; min-height:1em; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; }
+  .card.ask { border-color:var(--purple); }
+  .pill { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:99px; border:1px solid var(--line); color:var(--muted); text-transform:uppercase; }
+  .pill.active { color:var(--accent); border-color:#23573a; } .pill.paused { color:var(--warn); border-color:var(--warn); } .pill.filled { color:var(--bad); border-color:var(--bad); }
+  .list { margin:4px 0 0; padding-left:18px; } .list li { margin:2px 0; }
+  .k { font-weight:700; font-size:13px; color:var(--muted); margin-top:8px; }
+  .hard { color:var(--bad); } .small { font-size:13px; }
+  .actions { display:flex; gap:8px; margin-top:10px; } .actions button { flex:1; }
+  .log { font:13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; color:#c9d1d9; }
+  .log div { padding:3px 0; border-bottom:1px solid #1b212b; word-break:break-word; }
+  .log b { color:var(--info); }
+  .contact { margin-top:8px; padding:8px; border-radius:8px; background:#0b2216; border:1px solid #23573a; word-break:break-word; }
+  .spin { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:6px; animation:pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity:.25; } }
+</style>
+</head>
+<body>
+<main id="main">
+  <section id="form-view" hidden>
+    <h1>Hiring brief</h1>
+    <p class="lead">Under a minute. Tell Bridge who you need; the agent matches opted-in people and only shares contact details after both of you say yes.</p>
+    <form id="f">
+      <label>Company</label>
+      <select id="company" name="company_id"></select>
+      <div id="newco" hidden>
+        <div class="row2" style="margin-top:8px">
+          <input name="company_name" maxlength="60" placeholder="Company name">
+          <input name="domain" maxlength="120" placeholder="Website (optional)">
+        </div>
+      </div>
+      <label>Describe the person who'd make your next 3 months easier</label>
+      <textarea name="description" required maxlength="1000" placeholder="e.g. Someone who owns our data pipeline end to end so I stop babysitting nightly jobs"></textarea>
+      <label>Someone like… <small>(a past great hire or teammate; no names or links needed)</small></label>
+      <textarea name="someone_like" maxlength="600" placeholder="e.g. Our best early engineer shipped fast, wrote tests, and talked to customers"></textarea>
+      <label>Dealbreakers / not looking for <small>(hard filter)</small></label>
+      <textarea name="dealbreakers" maxlength="600" placeholder="e.g. No agency background; not a manager-only role"></textarea>
+      <label>Must-have skills <small>(Enter or comma to add)</small></label>
+      <div class="tags" id="tags"><input id="taginput" maxlength="40" placeholder="e.g. Python" enterkeyhint="enter"></div>
+      <div class="row2">
+        <div><label>Seniority</label>
+          <select name="seniority"><option value="">any</option><option>junior</option><option>mid</option><option>senior</option><option>staff+ / lead</option></select></div>
+        <div><label>Location / remote</label><input name="location" maxlength="80" placeholder="e.g. SF or remote"></div>
+      </div>
+      <label>Start timing</label>
+      <div class="pills" id="timing"></div>
+      <details><summary>Paste an existing JD or doc (optional)</summary>
+        <textarea name="jd_text" maxlength="6000" style="min-height:120px;margin-top:8px" placeholder="Paste text, not links"></textarea>
+      </details>
+      <button id="go" style="margin-top:18px">Send brief to the agent</button>
+      <div class="err" id="err"></div>
+    </form>
+  </section>
+  <section id="brief-view" hidden></section>
+</main>
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clock = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+const params = new URLSearchParams(location.search);
+const token = params.get('b');
+const TIMINGS = ['this week', 'this month', 'this quarter', 'just exploring'];
+
+async function post(url, body) {
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.detail || 'Something went wrong');
+  return j;
+}
+
+// ---------- form ----------
+let tags = [];
+function renderTags() {
+  const box = document.getElementById('tags'), input = document.getElementById('taginput');
+  box.querySelectorAll('.chip').forEach(n => n.remove());
+  tags.forEach((t, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${esc(t)}<button type="button" aria-label="remove">×</button>`;
+    chip.querySelector('button').onclick = () => { tags.splice(i, 1); renderTags(); };
+    box.insertBefore(chip, input);
+  });
+}
+function addTag() {
+  const input = document.getElementById('taginput');
+  input.value.split(',').map(s => s.trim()).filter(Boolean).forEach(t => { if (tags.length < 12 && !tags.includes(t)) tags.push(t); });
+  input.value = ''; renderTags();
+}
+async function showForm() {
+  document.getElementById('form-view').hidden = false;
+  document.getElementById('timing').innerHTML = TIMINGS.map((t, i) =>
+    `<input type="radio" name="start_timing" id="t${i}" value="${t}" ${t === 'this month' ? 'checked' : ''}><label for="t${i}">${t}</label>`).join('');
+  const input = document.getElementById('taginput');
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); }
+    else if (e.key === 'Backspace' && !input.value && tags.length) { tags.pop(); renderTags(); }
+  });
+  input.addEventListener('blur', addTag);
+  const sel = document.getElementById('company');
+  const companies = await (await fetch('/api/companies')).json();
+  sel.innerHTML = '<option value="">Select your company…</option>' +
+    companies.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('') + '<option value="new">My company isn\'t listed</option>';
+  if (params.get('company')) sel.value = params.get('company');
+  sel.onchange = () => { document.getElementById('newco').hidden = sel.value !== 'new'; };
+}
+document.getElementById('f').addEventListener('submit', async e => {
+  e.preventDefault(); addTag();
+  const btn = document.getElementById('go'), err = document.getElementById('err');
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  if (!data.company_id) { err.textContent = 'Pick your company (or "My company isn\'t listed").'; return; }
+  if (data.company_id === 'new') delete data.company_id;
+  data.skills = tags;
+  btn.disabled = true; err.textContent = '';
+  try {
+    const j = await post('/api/brief', data);
+    location.href = '/founder?b=' + encodeURIComponent(j.token) + '&new=1';
+  } catch (ex) { err.textContent = ex.message; btn.disabled = false; }
+});
+
+// ---------- brief status ----------
+let answering = false;
+const list = items => items && items.length ? `<ul class="list">${items.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : '<div class="muted">none</div>';
+function view(d) {
+  const b = d.brief, s = b.scope;
+  let h = `<h1>${esc(d.company.name)}</h1>
+    <div><span class="pill ${esc(b.status)}">${esc(b.status)}</span> <span class="muted">${esc(b.start_timing)}${b.seeded ? ' · sample brief' : ''}</span></div>`;
+  if (params.get('new')) h += `<div class="card" style="border-color:#23573a">Brief received. Bookmark this page: matches and questions show up here.</div>`;
+  if (!s) {
+    h += `<div class="card"><span class="spin"></span>The agent is reading your brief — usually within one cycle.<div class="muted" style="margin-top:6px">“${esc(b.description)}”</div></div>`;
+  } else {
+    h += `<div class="card"><div class="muted small">Agent's read of your brief</div><h2>${esc(s.role)}</h2><div>${esc(s.one_liner)}</div>
+      <div class="k">Must-haves</div>${list(s.must_haves)}
+      ${s.nice_to_haves.length ? `<div class="k">Nice-to-haves</div>${list(s.nice_to_haves)}` : ''}
+      <div class="k hard">Dealbreakers (hard filter)</div>${list(s.dealbreakers)}
+      <div class="k">Seniority · location · urgency</div><div>${esc(s.seniority)} · ${esc(s.location)} · ${esc(s.urgency)}</div></div>`;
+    if (s.clarifying_questions.length && b.answers === null) {
+      h += `<div class="card ask"><h2>Quick question${s.clarifying_questions.length > 1 ? 's' : ''}</h2>
+        <div class="muted">Answering re-scopes the brief. Matching continues meanwhile.</div>
+        ${s.clarifying_questions.map((q, i) => `<label>${esc(q)}</label><input data-q="${i}" maxlength="400">`).join('')}
+        <div class="actions"><button id="ans">Send answers</button><button class="ghost" id="skip">Skip</button></div></div>`;
+    }
+  }
+  d.asks.forEach(a => {
+    h += `<div class="card ask"><b>${esc(a.message)}</b><div class="actions">` + (a.kind === 'stale'
+      ? `<button data-ask="${a.id}" data-act="yes">Yes, still hiring</button><button class="ghost" data-status="paused">Pause</button><button class="ghost bad" data-status="filled">Filled</button>`
+      : `<button onclick="location.href='/founder?company=${d.company.id}'">Add a brief</button><button class="ghost" data-ask="${a.id}" data-act="dismiss">Not now</button>`) + `</div></div>`;
+  });
+  if (d.suggestion) h += `<div class="card"><div class="muted small">Forecast from your job board</div>${esc(d.suggestion)}
+    <div class="actions"><button class="ghost" onclick="location.href='/founder?company=${d.company.id}'">Add a brief for that</button></div></div>`;
+  h += `<h2 style="margin-top:20px">Matches</h2>`;
+  if (!d.intros.length) h += `<div class="card muted">${s ? 'No strong match yet. The agent only proposes people who clear the bar, and checks again on your urgency.' : 'Waiting for the scope…'}</div>`;
+  d.intros.forEach(i => {
+    h += `<div class="card"><b>${esc(i.first_name)}</b> · ${Number(i.score).toFixed(2)} · <span class="muted">${i.status === 'requested' ? `waiting for ${esc(i.first_name)}'s yes` : esc(i.status)}</span>
+      <div style="margin-top:4px">${esc(i.reason)}</div>
+      ${i.status === 'proposed' ? `<input data-contact="${i.id}" placeholder="Your email, shared only if ${esc(i.first_name)} accepts" style="margin-top:8px"><div class="actions"><button data-req="${i.id}">Request intro</button></div>` : ''}
+      ${i.candidate_contact ? `<div class="contact">Both said yes. Contact: <b>${esc(i.candidate_contact)}</b></div>` : ''}</div>`;
+  });
+  h += `<div class="actions" style="margin-top:16px">` + (b.status === 'active'
+    ? `<button class="ghost" data-status="paused">Pause</button><button class="ghost bad" data-status="filled">Mark filled</button>`
+    : `<button class="ghost" data-status="active">Resume</button>`) + `<button class="ghost" onclick="location.href='/founder?company=${d.company.id}'">New brief</button></div>`;
+  h += `<h2 style="margin-top:20px">What the agent is doing</h2><div class="card log">${d.log.map(l => `<div>${clock(l.ts)} <b>${esc(l.kind)}</b> ${esc(l.message)}</div>`).join('') || '<span class="muted">nothing yet</span>'}</div>`;
+  return h;
+}
+function wire(box) {
+  const ans = box.querySelector('#ans'), skip = box.querySelector('#skip');
+  const send = async answers => { try { await post(`/api/brief/${token}/answers`, {answers}); answering = false; load(); } catch (e) { alert(e.message); } };
+  if (ans) ans.onclick = () => send([...box.querySelectorAll('input[data-q]')].map(i => i.value));
+  if (skip) skip.onclick = () => send([]);
+  box.querySelectorAll('input[data-q]').forEach(i => i.oninput = () => { answering = true; });
+  box.querySelectorAll('input[data-contact]').forEach(i => i.oninput = () => { answering = !!i.value; });
+  box.querySelectorAll('[data-status]').forEach(b => b.onclick = async () => {
+    const st = b.dataset.status;
+    if (st === 'filled' && !confirm('Mark this role filled? The agent stops spending on it.')) return;
+    try { await post(`/api/brief/${token}/status`, {status: st}); load(); } catch (e) { alert(e.message); }
+  });
+  box.querySelectorAll('[data-ask]').forEach(b => b.onclick = async () => {
+    try { await post(`/api/brief/${token}/ask/${b.dataset.ask}`, {action: b.dataset.act}); load(); } catch (e) { alert(e.message); }
+  });
+  box.querySelectorAll('[data-req]').forEach(b => b.onclick = async () => {
+    const contact = box.querySelector(`input[data-contact="${b.dataset.req}"]`).value.trim();
+    if (!contact) { alert('Add your email so it can be shared once they accept.'); return; }
+    try { await post(`/api/intro/${b.dataset.req}/request`, {contact}); answering = false; load(); } catch (e) { alert(e.message); }
+  });
+}
+async function load() {
+  if (answering) return;  // don't wipe what the founder is typing
+  const r = await fetch('/api/brief/' + encodeURIComponent(token));
+  const box = document.getElementById('brief-view');
+  box.hidden = false;
+  if (!r.ok) { box.innerHTML = '<h1>Brief not found</h1><p class="muted">This link doesn\'t exist. <a href="/founder" style="color:var(--info)">Write a new brief</a></p>'; return; }
+  box.innerHTML = view(await r.json()); wire(box);
+}
+
+if (token) { load(); setInterval(load, 3000); } else { showForm(); }
+</script>
+</body>
+</html>

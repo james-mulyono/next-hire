@@ -1,6 +1,8 @@
 """Bridge: FastAPI routes plus the background agent worker. Run: uvicorn app:app --host 0.0.0.0 --port 8000"""
 import importlib
+import json
 import os
+import re
 import secrets
 import threading
 import time
@@ -52,6 +54,32 @@ SEED_CANDIDATES = [  # clearly labeled sample profiles so matches exist before t
     ("Omar", "Engineering manager, grew analytics team from 3 to 12", "engineering manager", "senior", "remote (EU)"),
 ]
 
+SEED_BRIEFS = [  # clearly labeled sample founder briefs, so brief-driven matches exist before judges add their own
+    ("Browserbase", {
+        "description": "Someone who owns our browser fleet: keeps thousands of headless Chrome sessions fast and stable so I stop getting paged at 3am.",
+        "someone_like": "Our best early engineer had debugged Chromium internals and shipped Playwright fixes upstream.",
+        "dealbreakers": "Not a pure frontend role; not looking for people who have never run production infrastructure.",
+        "skills": ["Playwright", "Chrome internals", "browser automation"], "seniority": "senior",
+        "location": "remote (US time zones)", "start_timing": "this month"}),
+    ("Resend", {
+        "description": "An engineer who owns email deliverability end to end (inbox placement, DKIM/SPF, sender reputation) so I can focus on product.",
+        "someone_like": "A past teammate had run high-volume sending and could read bounce logs like a novel.",
+        "dealbreakers": "Not an email-marketing or campaign role; no one who needs heavy hand-holding.",
+        "skills": ["SMTP", "DKIM/SPF", "deliverability"], "seniority": "senior", "location": "remote",
+        "start_timing": "this week"}),
+]
+
+
+def _insert_brief(cid, fields, seeded=0):
+    now = time.time()
+    token = secrets.token_urlsafe(16)
+    store.ex("INSERT INTO hiring_briefs(company_id, token, description, someone_like, dealbreakers, skills_json, seniority, location, "
+             "start_timing, jd_text, status, seeded, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+             (cid, token, fields["description"], fields.get("someone_like") or "", fields.get("dealbreakers") or "",
+              json.dumps(fields.get("skills") or []), fields.get("seniority") or "", fields.get("location") or "",
+              fields.get("start_timing") or "this month", fields.get("jd_text") or "", "active", seeded, now, now))
+    return token
+
 
 def seed():
     if store.one("SELECT id FROM companies LIMIT 1") is None:
@@ -64,6 +92,11 @@ def seed():
                      "VALUES(?,?,?,?,?,?,?,?,1,?)",
                      (secrets.token_urlsafe(12), first, strengths, roles, seniority, location, "open to talk",
                       f"{first.lower()}@example.com (sample)", time.time()))
+    if store.one("SELECT id FROM hiring_briefs LIMIT 1") is None:
+        for name, fields in SEED_BRIEFS:
+            co = store.one("SELECT id FROM companies WHERE name=?", (name,))
+            if co:
+                _insert_brief(co["id"], fields, seeded=1)
 
 
 _stop = threading.Event()
@@ -116,6 +149,11 @@ def join_page():
 @app.get("/inbox")
 def inbox_page():
     return FileResponse(os.path.join(STATIC, "inbox.html"))
+
+
+@app.get("/founder")
+def founder_page():
+    return FileResponse(os.path.join(STATIC, "founder.html"))
 
 
 # ---------- candidate ----------
@@ -268,6 +306,7 @@ def run_now(cid: int):
 def filled(cid: int):
     c = _company_or_404(cid)
     store.update_company(cid, status="stopped")
+    store.ex("UPDATE hiring_briefs SET status='filled', updated_at=? WHERE company_id=? AND status='active'", (time.time(), cid))
     store.log("STOP", f"{c['name']}: founder marked the role filled → stopped watching, no more spend", cid)
     return {"ok": True}
 
@@ -294,6 +333,123 @@ def add_company(p: dict = Body(...)):
     return {"id": cid}
 
 
+# ---------- founder hiring brief ----------
+_THIRD_PARTY = re.compile(r"(https?://\S+|www\.\S+|\S+@\S+\.\S+|linkedin\.com/\S+)", re.I)
+
+
+def _redact(text):
+    """'Someone like' describes a third party: we never need their links or contact details."""
+    return _THIRD_PARTY.sub("[removed]", text)
+
+
+@app.get("/api/companies")
+def companies_list():
+    return store.q("SELECT id, name, added_by FROM companies ORDER BY CASE added_by WHEN 'seed' THEN 1 ELSE 0 END, name")
+
+
+@app.post("/api/brief")
+def create_brief(p: dict = Body(...)):
+    desc = _clean(p.get("description"), 1000)
+    if not desc:
+        raise HTTPException(400, "Tell us about the person who'd make your next 3 months easier")
+    if p.get("company_id"):
+        c = _company_or_404(int(p["company_id"]))
+    else:
+        name = _clean(p.get("company_name"), 60)
+        if not name:
+            raise HTTPException(400, "Pick your company or type its name")
+        domain = _clean(p.get("domain"), 120).replace("https://", "").replace("http://", "").strip("/") or None
+        cid = store.ex("INSERT INTO companies(name, domain, added_by, created_at) VALUES(?,?,?,?)", (name, domain, "founder", time.time()))
+        store.log("SIGNAL", f"{name}: added to the watchlist by its founder", cid)
+        c = store.company(cid)
+    timing = p.get("start_timing") if p.get("start_timing") in governor.URGENCY_OPTIONS else "this month"
+    skills = [t for t in (_clean(x, 40) for x in list(p.get("skills") or [])[:12]) if t]
+    token = _insert_brief(c["id"], {
+        "description": desc, "someone_like": _redact(_clean(p.get("someone_like"), 600)), "dealbreakers": _clean(p.get("dealbreakers"), 600),
+        "skills": skills, "seniority": _clean(p.get("seniority"), 40), "location": _clean(p.get("location"), 80),
+        "start_timing": timing, "jd_text": _clean(p.get("jd_text"), 6000)})
+    store.update_company(c["id"], status="active", sleep_until=0, attempts=0)
+    store.log("SIGNAL", f"{c['name']}: founder posted a hiring brief — \"{desc[:90]}\" ({timing}) → scoping next cycle", c["id"])
+    return {"token": token}
+
+
+def _brief_or_404(token):
+    b = store.brief_by_token(token)
+    if not b:
+        raise HTTPException(404, "Unknown brief link")
+    return b
+
+
+@app.get("/api/brief/{token}")
+def get_brief(token: str):
+    b = _brief_or_404(token)
+    c = store.company(b["company_id"])
+    intros = store.q("SELECT i.id, i.role, i.score, i.reason, i.status, ca.first_name, "
+                     "CASE WHEN i.status='accepted' THEN ca.contact END AS candidate_contact "
+                     "FROM intros i JOIN candidates ca ON ca.id=i.candidate_id WHERE i.brief_id=? ORDER BY i.id DESC", (b["id"],))
+    log = store.q("SELECT ts, kind, message FROM decisions WHERE company_id=? ORDER BY id DESC LIMIT 12", (c["id"],))
+    active = store.briefs(c["id"], "active")
+    return {
+        "brief": {k: b[k] for k in (*store.BRIEF_FIELDS, "status", "seeded", "created_at", "scope", "answers")},
+        "company": {"id": c["id"], "name": c["name"], "status": c["status"]},
+        "intros": intros, "asks": store.open_asks(c["id"], b["id"]), "log": log,
+        "suggestion": governor.forecast_suggestion(store.latest_forecast(c["id"]), active),
+    }
+
+
+@app.post("/api/brief/{token}/answers")
+def answer_brief(token: str, p: dict = Body(...)):
+    b = _brief_or_404(token)
+    qs = (b["scope"] or {}).get("clarifying_questions") or []
+    given = list(p.get("answers") or [])
+    answers = [{"q": q, "a": _clean(given[i] if i < len(given) else "", 400)} for i, q in enumerate(qs)]
+    store.update_brief(b["id"], answers_json=json.dumps(answers))
+    c = store.company(b["company_id"])
+    if any(a["a"] for a in answers):
+        store.update_company(c["id"], sleep_until=0)
+        store.log("SIGNAL", f"{c['name']}: founder answered the clarifying question(s) → re-scoping next cycle", c["id"])
+    else:
+        store.log("SIGNAL", f"{c['name']}: founder skipped the clarifying question(s) → keeping the current scope", c["id"])
+    return {"ok": True}
+
+
+@app.post("/api/brief/{token}/status")
+def brief_status(token: str, p: dict = Body(...)):
+    b = _brief_or_404(token)
+    new = p.get("status")
+    if new not in store.BRIEF_STATUSES:
+        raise HTTPException(400, "Status must be active, filled or paused")
+    c = store.company(b["company_id"])
+    role = (b["scope"] or {}).get("role") or "this role"
+    store.update_brief(b["id"], status=new, **({"confirmed_at": time.time()} if new == "active" else {}))
+    if new == "active":
+        store.update_company(c["id"], status="active", sleep_until=0)
+        store.log("SIGNAL", f"{c['name']}: founder resumed the brief for {role} → checking next cycle", c["id"])
+    else:
+        others = [x for x in store.briefs(c["id"], "active") if x["id"] != b["id"]]
+        if not others:
+            store.update_company(c["id"], status="stopped" if new == "filled" else "paused")
+        store.log("STOP", f"{c['name']}: founder marked the brief for {role} {new} → no more spend on it"
+                          + ("" if others else f"; {c['name']} {'stopped' if new == 'filled' else 'paused'}"), c["id"])
+    return {"ok": True}
+
+
+@app.post("/api/brief/{token}/ask/{ask_id}")
+def resolve_ask(token: str, ask_id: int, p: dict = Body(...)):
+    b = _brief_or_404(token)
+    ask = store.one("SELECT * FROM asks WHERE id=? AND brief_id=?", (ask_id, b["id"]))
+    if not ask:
+        raise HTTPException(404, "Unknown question")
+    store.ex("UPDATE asks SET status='resolved' WHERE id=?", (ask_id,))
+    c = store.company(b["company_id"])
+    if ask["kind"] == "stale" and p.get("action") == "yes":
+        store.update_brief(b["id"], confirmed_at=time.time())
+        store.log("SIGNAL", f"{c['name']}: founder confirmed they're still hiring → keeping the brief active", c["id"])
+    else:
+        store.log("SIGNAL", f"{c['name']}: founder answered \"{ask['message']}\" ({p.get('action') or 'dismissed'})", c["id"])
+    return {"ok": True}
+
+
 # ---------- state for the console ----------
 @app.get("/api/state")
 def state():
@@ -304,6 +460,10 @@ def state():
     for c in store.q("SELECT * FROM companies ORDER BY CASE added_by WHEN 'judge' THEN 0 WHEN 'founder' THEN 0 ELSE 1 END, id"):
         fc = store.latest_forecast(c["id"])
         snap = store.snapshot(c["id"])
+        active = store.briefs(c["id"], "active")
+        briefs = [{"id": b["id"], "description": b["description"], "seeded": b["seeded"], "urgency": governor.urgency(b),
+                   "scope": b["scope"], "awaiting_answers": bool(b["scope"] and b["scope"]["clarifying_questions"] and b["answers"] is None)}
+                  for b in active]
         intros = store.q("SELECT i.id, i.role, i.score, i.reason, i.status, i.founder_contact, ca.first_name, "
                          "CASE WHEN i.status='accepted' THEN ca.contact END AS candidate_contact "
                          "FROM intros i JOIN candidates ca ON ca.id=i.candidate_id WHERE i.company_id=? ORDER BY i.id DESC", (c["id"],))
@@ -313,6 +473,9 @@ def state():
             "postings": len(snap["postings"]) if snap else None,
             "sleeping_s": max(0, int(c["sleep_until"] - now)), "one_liner": c["one_liner"], "judge_note": c["judge_note"],
             "forecast": fc["data"] if fc else None, "forecast_at": fc["ts"] if fc else None,
+            "source": "brief" if active else "forecast", "briefs": briefs,
+            "suggestion": governor.forecast_suggestion(fc, active),
+            "asks": [{"kind": a["kind"], "message": a["message"]} for a in store.open_asks(c["id"])],
             "intros": intros, "held": store.one("SELECT COUNT(*) AS n FROM holds WHERE company_id=?", (c["id"],))["n"],
             "spend_hour": round(store.spend_total(now - 3600, c["id"]), 4), "spend_total": round(store.spend_total(0, c["id"]), 4),
             "budget_hour": governor.company_budget(c),
