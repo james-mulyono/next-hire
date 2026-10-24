@@ -27,8 +27,12 @@
   <h1>Join Bridge</h1>
   <p class="lead">30 seconds. An agent suggests you for a startup intro only when it's a strong fit, and nothing is shared without your yes.</p>
   <form id="f">
-    <label>First name</label>
-    <input name="first_name" required maxlength="40" autocomplete="given-name">
+    <div style="display:flex;gap:10px">
+      <div style="flex:1"><label>First name</label><input name="first_name" required maxlength="40" autocomplete="given-name"></div>
+      <div style="flex:1"><label>Last name</label><input name="last_name" required maxlength="40" autocomplete="family-name"></div>
+    </div>
+    <label>LinkedIn <small>(shown only after an accepted intro)</small></label>
+    <input name="linkedin" required maxlength="200" placeholder="linkedin.com/in/yourname" pattern=".*linkedin\.com/.*" title="A linkedin.com profile URL" autocapitalize="off">
     <label>What you're great at <small>(be specific)</small></label>
     <textarea name="strengths" required maxlength="400" placeholder="e.g. Built payments infra in Go; scaled Postgres to 10k QPS"></textarea>
     <label>Roles you'd want</label>
@@ -43,6 +47,8 @@
     <input name="contact" maxlength="120" required>
     <label>GitHub / portfolio <small>(optional, shown only after an accepted intro)</small></label>
     <input name="link" maxlength="200">
+    <label>Resume <small>(optional PDF, under 5 MB; used for matching, shared only after an accepted intro)</small></label>
+    <input type="file" name="resume" id="resume" accept="application/pdf,.pdf">
     <div class="consent"><input type="checkbox" name="consent" id="consent" required><label for="consent" style="margin:0;font-weight:400">Bridge may suggest me for startup intros. Nothing is shared without my yes, and I can pause or delete my data anytime.</label></div>
     <button id="go">Join</button>
     <div class="err" id="err"></div>
@@ -55,6 +61,12 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   btn.disabled = true; err.textContent = '';
   const data = Object.fromEntries(new FormData(e.target).entries());
   data.consent = document.getElementById('consent').checked;
+  delete data.resume;
+  const file = document.getElementById('resume').files[0];
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) { err.textContent = 'Resume must be under 5 MB'; btn.disabled = false; return; }
+    data.resume_b64 = await new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = bad; r.readAsDataURL(file); });
+  }
   try {
     const r = await fetch('/api/join', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
     const j = await r.json();

@@ -43,6 +43,11 @@ CREATE TABLE IF NOT EXISTS spend (
 
 with _lock:
     _conn.executescript(SCHEMA)
+    for col in ("last_name", "linkedin", "resume_text", "resume_file"):  # added after launch; migrate in place
+        try:
+            _conn.execute(f"ALTER TABLE candidates ADD COLUMN {col} TEXT")
+        except sqlite3.OperationalError:
+            pass
     _conn.commit()
 
 

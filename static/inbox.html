@@ -45,7 +45,7 @@ async function load() {
   if (!r.ok) { document.querySelector('main').innerHTML = '<h1>Link not found</h1><p class="muted">This inbox doesn\'t exist or was deleted.</p>'; return; }
   const d = await r.json();
   const p = d.profile;
-  document.getElementById('profile').innerHTML = `${esc(p.first_name)} · ${esc(p.strengths)}<br>Status: <b>${p.status === 'active' ? 'open to intros' : 'paused'}</b>`;
+  document.getElementById('profile').innerHTML = `${esc(p.first_name)} ${esc(p.last_name || '')} · ${esc(p.strengths)}${p.has_resume ? ' · resume on file' : ''}<br>Status: <b>${p.status === 'active' ? 'open to intros' : 'paused'}</b>`;
   document.getElementById('pause').textContent = p.status === 'active' ? 'Pause me' : 'Resume intros';
   const box = document.getElementById('intros');
   if (!d.intros.length) { box.innerHTML = '<div class="card muted">No intro requests yet. The agent only reaches out for strong matches.</div>'; return; }

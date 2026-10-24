@@ -141,6 +141,7 @@ def forecast(company, postings, added, removed, site_text):
 
 def match(company, spec, candidates):
     pool = [{"candidate_id": c["id"], "great_at": c["strengths"], "wants_roles": c["roles"], "seniority": c["seniority"],
-             "location": c["location"], "availability": c["availability"]} for c in candidates]
+             "location": c["location"], "availability": c["availability"],
+             **({"resume_excerpt": c["resume_text"][:1500]} if c.get("resume_text") else {})} for c in candidates]
     user = f"Company: {company['name']}\nRole spec: {json.dumps(spec)}\n\nPool:\n{json.dumps(pool)}"
     return call_json(MATCH_MODEL, MATCH_SYSTEM, user, MATCH_SCHEMA, "match", company["id"], effort="low")

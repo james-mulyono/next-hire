@@ -1,5 +1,7 @@
 """Bridge: FastAPI routes plus the background agent worker. Run: uvicorn app:app --host 0.0.0.0 --port 8000"""
+import base64
 import importlib
+import io
 import os
 import secrets
 import threading
@@ -8,6 +10,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
+import pypdf
 
 import agent
 import governor
@@ -123,18 +126,60 @@ def _clean(v, n=300):
     return (str(v or "")).strip()[:n]
 
 
+def _url(v):
+    """Only http(s) links ever reach an href."""
+    if not v:
+        return ""
+    return v if v.lower().startswith(("http://", "https://")) else "https://" + v
+
+
+UPLOADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+MAX_RESUME_BYTES = 5 * 1024 * 1024
+
+
+def _save_resume(token, b64):
+    """Optional PDF resume: keep the file (shared only after an accepted intro) and its text (used for matching)."""
+    if not b64:
+        return None, None
+    try:
+        data = base64.b64decode(b64.split(",")[-1], validate=True)
+    except Exception:
+        raise HTTPException(400, "Couldn't read the resume file")
+    if len(data) > MAX_RESUME_BYTES:
+        raise HTTPException(400, "Resume must be under 5 MB")
+    if not data.startswith(b"%PDF"):
+        raise HTTPException(400, "Resume must be a PDF")
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(data))
+        text = " ".join((pg.extract_text() or "") for pg in reader.pages[:4])
+        text = " ".join(text.split())[:3000]
+    except Exception:
+        text = ""
+    os.makedirs(UPLOADS, exist_ok=True)
+    name = f"{token}.pdf"
+    with open(os.path.join(UPLOADS, name), "wb") as f:
+        f.write(data)
+    return text, name
+
+
 @app.post("/api/join")
 def join(p: dict = Body(...)):
     if not p.get("consent"):
         raise HTTPException(400, "Consent is required")
-    first, strengths = _clean(p.get("first_name"), 40), _clean(p.get("strengths"), 400)
-    if not first or not strengths:
-        raise HTTPException(400, "First name and what you're great at are required")
+    first, last, strengths = _clean(p.get("first_name"), 40), _clean(p.get("last_name"), 40), _clean(p.get("strengths"), 400)
+    linkedin = _clean(p.get("linkedin"), 200)
+    if not first or not last or not strengths:
+        raise HTTPException(400, "First name, last name and what you're great at are required")
+    if "linkedin.com/" not in linkedin.lower():
+        raise HTTPException(400, "A LinkedIn profile URL is required (linkedin.com/in/...)")
+    linkedin, link = _url(linkedin), _url(_clean(p.get("link"), 200))
     token = secrets.token_urlsafe(16)
-    store.ex("INSERT INTO candidates(token, first_name, strengths, roles, seniority, location, availability, contact, link, seeded, created_at) "
-             "VALUES(?,?,?,?,?,?,?,?,?,0,?)",
-             (token, first, strengths, _clean(p.get("roles")), _clean(p.get("seniority"), 40), _clean(p.get("location"), 80),
-              _clean(p.get("availability"), 80), _clean(p.get("contact"), 120), _clean(p.get("link"), 200), time.time()))
+    resume_text, resume_file = _save_resume(token, p.get("resume_b64"))
+    store.ex("INSERT INTO candidates(token, first_name, last_name, strengths, roles, seniority, location, availability, contact, link, "
+             "linkedin, resume_text, resume_file, seeded, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)",
+             (token, first, last, strengths, _clean(p.get("roles")), _clean(p.get("seniority"), 40), _clean(p.get("location"), 80),
+              _clean(p.get("availability"), 80), _clean(p.get("contact"), 120), link,
+              linkedin, resume_text, resume_file, time.time()))
     woken = store.wake_active()
     store.log("SIGNAL", f"New candidate {first} joined ({strengths[:60]}) → re-checking {woken} sleeping companies")
     return {"token": token}
@@ -155,7 +200,8 @@ def inbox(t: str):
     for i in intros:
         if i["status"] != "accepted":
             i["founder_contact"] = None
-    profile = {k: c[k] for k in ("first_name", "strengths", "roles", "seniority", "location", "availability", "contact", "status")}
+    profile = {k: c[k] for k in ("first_name", "last_name", "strengths", "roles", "seniority", "location", "availability", "contact", "linkedin", "status")}
+    profile["has_resume"] = bool(c["resume_file"])
     return {"profile": profile, "intros": intros}
 
 
@@ -184,11 +230,26 @@ def pause_me(p: dict = Body(...)):
     return {"status": new}
 
 
+@app.get("/api/intro/{intro_id}/resume")
+def intro_resume(intro_id: int):
+    row = store.one("SELECT i.status, ca.resume_file, ca.first_name, ca.last_name FROM intros i JOIN candidates ca ON ca.id=i.candidate_id "
+                    "WHERE i.id=?", (intro_id,))
+    if not row or row["status"] != "accepted" or not row["resume_file"]:
+        raise HTTPException(404, "Resume is shared only after both sides accept")
+    return FileResponse(os.path.join(UPLOADS, row["resume_file"]), media_type="application/pdf",
+                        filename=f"{row['first_name']}-{row['last_name'] or ''}-resume.pdf")
+
+
 @app.post("/api/inbox/delete")
 def delete_me(p: dict = Body(...)):
     c = _candidate(p.get("t"))
     for table in ("intros", "holds"):
         store.ex(f"DELETE FROM {table} WHERE candidate_id=?", (c["id"],))
+    if c["resume_file"]:
+        try:
+            os.remove(os.path.join(UPLOADS, c["resume_file"]))
+        except OSError:
+            pass
     store.ex("DELETE FROM candidates WHERE id=?", (c["id"],))
     store.log("STOP", "A candidate deleted their data")
     return {"ok": True}
@@ -305,7 +366,11 @@ def state():
         fc = store.latest_forecast(c["id"])
         snap = store.snapshot(c["id"])
         intros = store.q("SELECT i.id, i.role, i.score, i.reason, i.status, i.founder_contact, ca.first_name, "
-                         "CASE WHEN i.status='accepted' THEN ca.contact END AS candidate_contact "
+                         "CASE WHEN i.status='accepted' THEN ca.contact END AS candidate_contact, "
+                         "CASE WHEN i.status='accepted' THEN ca.last_name END AS last_name, "
+                         "CASE WHEN i.status='accepted' THEN ca.linkedin END AS linkedin, "
+                         "CASE WHEN i.status='accepted' THEN ca.link END AS link, "
+                         "CASE WHEN i.status='accepted' AND ca.resume_file IS NOT NULL THEN 1 ELSE 0 END AS has_resume "
                          "FROM intros i JOIN candidates ca ON ca.id=i.candidate_id WHERE i.company_id=? ORDER BY i.id DESC", (c["id"],))
         companies.append({
             "id": c["id"], "name": c["name"], "domain": c["domain"], "added_by": c["added_by"], "status": c["status"],

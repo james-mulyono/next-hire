@@ -145,7 +145,10 @@ function card(c) {
   }
   c.intros.forEach(i => {
     html += `<div class="intro"><b>${esc(i.first_name)}</b> · ${Number(i.score).toFixed(2)} · <span class="muted">${esc(i.status)}</span><div class="small">${esc(i.reason)}</div>
-      ${i.candidate_contact ? `<div class="small" style="color:var(--accent)">Contact: ${esc(i.candidate_contact)}</div>` : ''}
+      ${i.candidate_contact ? `<div class="small" style="color:var(--accent)">${esc(i.first_name)} ${esc(i.last_name || '')} · Contact: ${esc(i.candidate_contact)}
+        ${i.linkedin ? ` · <a href="${esc(i.linkedin)}" target="_blank" rel="noopener" style="color:inherit">LinkedIn</a>` : ''}
+        ${i.link ? ` · <a href="${esc(i.link)}" target="_blank" rel="noopener" style="color:inherit">Portfolio</a>` : ''}
+        ${i.has_resume ? ` · <a href="/api/intro/${i.id}/resume" target="_blank" style="color:inherit">Resume (PDF)</a>` : ''}</div>` : ''}
       <div class="actions">${i.status === 'proposed' ? `<button class="go" onclick="act.request(${i.id})">Request intro</button>` : ''}<button onclick="act.repropose(${i.id})">Propose again</button></div></div>`;
   });
   html += `<div class="small muted" style="margin-top:8px">Held back ${c.held} · $${c.spend_hour.toFixed(3)} of $${c.budget_hour.toFixed(2)}/h · total $${c.spend_total.toFixed(3)}</div>
