@@ -18,6 +18,20 @@ A 6-person startup needs hire #7. The founder has no recruiter and no time to wr
 
 Founders can also post a **hiring brief** in 60 seconds: who they need, dealbreakers and urgency. The agent scopes it into a role spec and treats dealbreakers as hard filters. Every match reason quotes the part of the brief it satisfies, and requirements the founder never wrote are dropped.
 
+## Live candidate data: LinkedIn and GitHub
+Every candidate profile is built from live data, not only what someone typed into a form.
+
+- **Live LinkedIn data (Bright Data):** when a candidate joins with their LinkedIn URL, the agent pulls their live profile through Bright Data's scrape API (`POST /datasets/v3/scrape`, LinkedIn profiles dataset, about 45 s per profile). That gives current position, work history, internships, education and certifications. It runs in a background thread, so joining stays instant.
+- **GitHub profiles (GitHub REST API):** when a candidate links their GitHub, the agent reads their public profile and repositories: languages actually used, top repos by stars, and recent activity. The matcher treats this as evidence of real work.
+- **One profile from all sources:** Claude combines signup answers, resume, LinkedIn and GitHub into one structured profile: headline, skills, specializations, internships and projects. The profile:
+  - is used in matching;
+  - shows on founders' swipe cards ("GitHub (verified)", "Internships", "Projects");
+  - drives the review filters (skills, roles, seniority, school, has GitHub, has resume);
+  - appears in the candidate's own inbox, so they can see what founders see.
+- **Matching against companies:** each company's needs come from its live job board, its careers, about and values pages ("what they look for"), the agent's own web research, and any founder brief. Both sides are compared in one scored match, with a reason and the gap for every candidate.
+
+Candidate data is read only for people who joined and linked the profiles themselves; the consent checkbox at signup says so.
+
 ## Why it's unsupervised
 The LLM never decides whether to act. A deterministic **governor** does:
 
@@ -51,7 +65,7 @@ Caveats:
 - Job boards only list postings that are still open.
 
 ## Privacy rules (enforced in code)
-- **Opt-in only.** Nobody is scraped, looked up or contacted without joining.
+- **Opt-in only.** Candidate LinkedIn and GitHub data is pulled only for profiles the candidate linked at signup, with consent. Nobody is contacted without joining.
 - **Company data only from public company pages.** Web research is limited to company-level news, never individuals.
 - **Contact details, LinkedIn and resume stay hidden** until both sides accept.
 - **Candidates can pause or delete themselves at any time.** Delete also removes their resume file.
