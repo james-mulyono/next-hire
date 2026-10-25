@@ -13,6 +13,7 @@ from contextlib import asynccontextmanager
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 import pypdf
+import requests
 
 import agent
 import governor
@@ -175,6 +176,38 @@ UPLOADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
 MAX_RESUME_BYTES = 5 * 1024 * 1024
 
 
+GITHUB_USER = re.compile(r"github\.com/([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?:[/?#]|$)", re.I)
+
+
+def _github_summary(link):
+    """Consented check of the GitHub profile the candidate linked: real languages, top repos, recent activity.
+    Public API, unauthenticated, one profile, nothing else about the person. Returns '' if not a GitHub link or on error."""
+    m = GITHUB_USER.search(link or "")
+    if not m:
+        return ""
+    user = m.group(1)
+    try:
+        h = {"Accept": "application/vnd.github+json", "User-Agent": "bridge-hackathon"}
+        prof = requests.get(f"https://api.github.com/users/{user}", headers=h, timeout=5).json()
+        repos = requests.get(f"https://api.github.com/users/{user}/repos?per_page=100&sort=pushed", headers=h, timeout=5).json()
+        if not isinstance(repos, list) or "login" not in prof:
+            return ""
+    except Exception:
+        return ""
+    own = [r for r in repos if not r.get("fork")]
+    langs = {}
+    for r in own:
+        if r.get("language"):
+            langs[r["language"]] = langs.get(r["language"], 0) + 1
+    top_langs = ", ".join(l for l, _ in sorted(langs.items(), key=lambda kv: -kv[1])[:4])
+    top = sorted(own, key=lambda r: -r.get("stargazers_count", 0))[:3]
+    stars = "; ".join(f"{r['name']} ({r.get('language') or 'n/a'}, {r.get('stargazers_count', 0)}★)" for r in top)
+    last = max((r.get("pushed_at") or "" for r in own), default="")[:7]
+    return (f"{prof.get('public_repos', len(own))} public repos, {prof.get('followers', 0)} followers"
+            + (f"; languages: {top_langs}" if top_langs else "") + (f"; top repos: {stars}" if stars else "")
+            + (f"; last push {last}" if last else ""))[:400]
+
+
 def _save_resume(token, b64):
     """Optional PDF resume: keep the file (shared only after an accepted intro) and its text (used for matching)."""
     if not b64:
@@ -213,13 +246,15 @@ def join(p: dict = Body(...)):
     linkedin, link = _url(linkedin), _url(_clean(p.get("link"), 200))
     token = secrets.token_urlsafe(16)
     resume_text, resume_file = _save_resume(token, p.get("resume_b64"))
+    gh = _github_summary(link)
     store.ex("INSERT INTO candidates(token, first_name, last_name, strengths, roles, seniority, location, availability, contact, link, "
-             "linkedin, resume_text, resume_file, school, seeded, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)",
+             "linkedin, resume_text, resume_file, school, github_summary, seeded, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)",
              (token, first, last, strengths, _clean(p.get("roles")), _clean(p.get("seniority"), 40), _clean(p.get("location"), 80),
               _clean(p.get("availability"), 80), _clean(p.get("contact"), 120), link,
-              linkedin, resume_text, resume_file, _clean(p.get("school"), 80), time.time()))
+              linkedin, resume_text, resume_file, _clean(p.get("school"), 80), gh, time.time()))
     woken = store.wake_active()
-    store.log("SIGNAL", f"New candidate {first} joined ({strengths[:60]}) → re-checking {woken} sleeping companies")
+    store.log("SIGNAL", f"New candidate {first} joined ({strengths[:60]})" + (f" · GitHub verified: {gh[:120]}" if gh else "")
+              + f" → re-checking {woken} sleeping companies")
     return {"token": token}
 
 
@@ -301,7 +336,7 @@ def _company_or_404(cid):
     return c
 
 
-DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.school, ca.seeded, " \
+DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.school, ca.github_summary, ca.seeded, " \
               "(ca.resume_file IS NOT NULL) AS has_resume"
 
 

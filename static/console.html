@@ -358,6 +358,7 @@ function swCard(it, cls) {
     ${it.school ? `<div class="sw-meta"><b>${esc(it.school)}</b>${topSchool(it.school) ? ' · top school' : ''}</div>` : ''}
     <div class="sw-src">${it.kind === 'proposed' ? 'Recommended by the agent' : 'Held back by the agent'} for ${esc(it.role || 'this role')}${it.seeded ? ' · sample profile' : ''}${it.has_resume ? ' · resume on file' : ''}</div>
     ${it.roles ? `<div class="sw-f"><span>Looking for</span>${esc(it.roles)}</div>` : ''}
+    ${it.github_summary ? `<div class="sw-f"><span>GitHub (verified)</span>${esc(it.github_summary)}</div>` : ''}
     <div class="sw-f"><span>Strengths</span>${esc(it.strengths)}</div>
     <div class="sw-f"><span>${it.kind === 'proposed' ? 'Why they fit' : 'What’s missing'}</span>${esc(it.kind === 'proposed' ? it.reason : gap)}</div>
   </div>`;

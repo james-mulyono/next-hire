@@ -58,11 +58,11 @@
     <select name="availability"><option>looking now</option><option selected>open to talk</option><option>summer internship</option><option>not now, maybe later</option></select>
     <label>Contact to share after you accept <small>(email or phone)</small></label>
     <input name="contact" maxlength="120" required>
-    <label>GitHub / portfolio <small>(optional, shown only after an accepted intro)</small></label>
+    <label>GitHub / portfolio <small>(optional; a GitHub link gets your real projects verified and used in matching)</small></label>
     <input name="link" maxlength="200">
     <label>Resume <small>(optional PDF, under 5 MB; used for matching, shared only after an accepted intro)</small></label>
     <input type="file" name="resume" id="resume" accept="application/pdf,.pdf">
-    <div class="consent"><input type="checkbox" name="consent" id="consent" required><label for="consent" style="margin:0;font-weight:400">Bridge may suggest me for startup intros. Nothing is shared without my yes, and I can pause or delete my data anytime.</label></div>
+    <div class="consent"><input type="checkbox" name="consent" id="consent" required><label for="consent" style="margin:0;font-weight:400">Bridge may suggest me for startup intros and read the public GitHub profile I link to improve my matches. Nothing is shared without my yes, and I can pause or delete my data anytime.</label></div>
     <button id="go">Join</button>
     <div class="err" id="err"></div>
   </form>

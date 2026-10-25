@@ -160,7 +160,7 @@ MATCH_SCHEMA = {
     "additionalProperties": False,
 }
 
-MATCH_SYSTEM = """You match a startup role spec against a pool of people who opted in to intros. Use only what each person wrote about themselves.
+MATCH_SYSTEM = """You match a startup role spec against a pool of people who opted in to intros. Use only what each person wrote about themselves, plus github_verified: facts read from the public GitHub profile they chose to link. Treat it as evidence of real work; never penalize someone for not having it.
 Return the 3 best candidates (fewer if the pool is smaller), best first.
 Score calibration (0-1): 0.85+ clearly meets every must-have and wants this kind of role; 0.70-0.84 meets the must-haves with minor gaps; below 0.70 misses a must-have or doesn't want this kind of role.
 Be strict: most people in a general pool should score below 0.70 for any specific role. A weak intro wastes a founder's and a candidate's time.
@@ -192,6 +192,7 @@ def _pool(candidates):
     return [{"candidate_id": c["id"], "great_at": c["strengths"], "wants_roles": c["roles"], "seniority": c["seniority"],
              "location": c["location"], "availability": c["availability"],
              **({"school": c["school"]} if c.get("school") else {}),
+             **({"github_verified": c["github_summary"]} if c.get("github_summary") else {}),
              **({"resume_excerpt": c["resume_text"][:1500]} if c.get("resume_text") else {})} for c in candidates]
 
 
