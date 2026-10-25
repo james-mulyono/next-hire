@@ -10,7 +10,7 @@ BUDGET_COMPANY_HOUR = float(os.environ.get("BUDGET_COMPANY_HOUR", 0.15))  # USD 
 BUDGET_DAY = float(os.environ.get("BUDGET_DAY", 3.00))                    # USD across everything per rolling day
 EST_CALL_USD = 0.03          # conservative estimate used before a call
 MAX_ATTEMPTS = 3             # failed observes before asking the founder
-FORECAST_MIN_CONF = 0.50
+FORECAST_MIN_CONF = 0.65  # backtest: 71% exact-role hit rate at >= 0.65 vs 0-29% below
 MATCH_MIN_SCORE = 0.70
 BACKOFF_MIN = [5, 10, 20]    # stagnation sleep, minutes
 ACTIVE_SLEEP_MIN = 5         # sleep after a productive cycle
