@@ -191,6 +191,7 @@ def forecast(company, postings, added, removed, site_text):
 def _pool(candidates):
     return [{"candidate_id": c["id"], "great_at": c["strengths"], "wants_roles": c["roles"], "seniority": c["seniority"],
              "location": c["location"], "availability": c["availability"],
+             **({"school": c["school"]} if c.get("school") else {}),
              **({"resume_excerpt": c["resume_text"][:1500]} if c.get("resume_text") else {})} for c in candidates]
 
 

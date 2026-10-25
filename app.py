@@ -214,10 +214,10 @@ def join(p: dict = Body(...)):
     token = secrets.token_urlsafe(16)
     resume_text, resume_file = _save_resume(token, p.get("resume_b64"))
     store.ex("INSERT INTO candidates(token, first_name, last_name, strengths, roles, seniority, location, availability, contact, link, "
-             "linkedin, resume_text, resume_file, seeded, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)",
+             "linkedin, resume_text, resume_file, school, seeded, created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)",
              (token, first, last, strengths, _clean(p.get("roles")), _clean(p.get("seniority"), 40), _clean(p.get("location"), 80),
               _clean(p.get("availability"), 80), _clean(p.get("contact"), 120), link,
-              linkedin, resume_text, resume_file, time.time()))
+              linkedin, resume_text, resume_file, _clean(p.get("school"), 80), time.time()))
     woken = store.wake_active()
     store.log("SIGNAL", f"New candidate {first} joined ({strengths[:60]}) → re-checking {woken} sleeping companies")
     return {"token": token}
@@ -301,7 +301,7 @@ def _company_or_404(cid):
     return c
 
 
-DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.seeded, " \
+DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.school, ca.seeded, " \
               "(ca.resume_file IS NOT NULL) AS has_resume"
 
 

@@ -343,6 +343,11 @@ sortSel.onchange = e => { sortBy = e.target.value; store.set('sort', sortBy); re
 
 // ---------- swipe review (modal) ----------
 let review = null;   // {cid, name, items, total, done, busy}
+const TOP_SCHOOLS = [/stanford/, /\bmit\b|massachusetts institute/, /harvard/, /berkeley|\bucb\b/, /carnegie mellon|\bcmu\b/, /caltech|california institute of tech/,
+  /princeton/, /\byale\b/, /columbia/, /\bupenn\b|university of pennsylvania|wharton/, /cornell/, /\bucla\b/, /\bucsd\b|uc san diego|san diego, university of california/,
+  /georgia tech|georgia institute/, /\buiuc\b|urbana|illinois/, /university of michigan|umich/, /university of washington|\buw\b/, /waterloo/, /toronto/,
+  /oxford/, /cambridge/, /\beth\b|zurich/, /\biit\b/, /tsinghua/, /\bnus\b|national university of singapore/, /\bucsb\b|santa barbara/, /\buc davis\b/, /\busc\b|southern california/, /\bnyu\b|new york university/, /brown/, /duke/, /northwestern/, /rice university/, /ut austin|texas at austin/, /purdue/];
+const topSchool = s => !!s && TOP_SCHOOLS.some(re => re.test(s.toLowerCase()));
 
 function swCard(it, cls) {
   const gap = (it.gap || '').split('gap: ').pop();
@@ -350,6 +355,7 @@ function swCard(it, cls) {
     <div class="stamp yes">INTERESTED</div><div class="stamp no">PASS</div>
     <div class="sw-top"><div class="sw-name">${esc(it.first_name)}</div><div class="sw-score">${Math.round(Number(it.score) * 100)}% match</div></div>
     <div class="sw-meta">${esc([it.seniority, it.location, it.availability].filter(Boolean).join(' · '))}</div>
+    ${it.school ? `<div class="sw-meta"><b>${esc(it.school)}</b>${topSchool(it.school) ? ' · top school' : ''}</div>` : ''}
     <div class="sw-src">${it.kind === 'proposed' ? 'Recommended by the agent' : 'Held back by the agent'} for ${esc(it.role || 'this role')}${it.seeded ? ' · sample profile' : ''}${it.has_resume ? ' · resume on file' : ''}</div>
     ${it.roles ? `<div class="sw-f"><span>Looking for</span>${esc(it.roles)}</div>` : ''}
     <div class="sw-f"><span>Strengths</span>${esc(it.strengths)}</div>
@@ -360,7 +366,9 @@ function swCard(it, cls) {
 function openReview(cid) {
   const c = lastState && lastState.companies.find(x => x.id === cid);
   if (!c || !c.deck.length) return;
-  review = {cid, name: c.name, items: c.deck.slice(), total: c.deck.length, done: 0, busy: false, liked: 0};
+  const topOnly = store.get('topOnly', '0') === '1';
+  const items = topOnly ? c.deck.filter(d => topSchool(d.school)) : c.deck.slice();
+  review = {cid, name: c.name, all: c.deck.slice(), items, total: items.length, done: 0, busy: false, liked: 0, topOnly};
   const root = document.getElementById('modal-root');
   root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-label="Review candidates for ${esc(c.name)}">
     <div class="m-head"><div><div class="m-title">Review candidates</div><div class="m-sub">${esc(c.name)} · contact details stay hidden until both sides say yes</div></div>
@@ -368,7 +376,8 @@ function openReview(cid) {
     <div class="m-body"><div class="progress"><i id="prog"></i></div><div class="stack" id="stack"></div>
       <div class="m-actions"><button id="b-pass"><span class="kbd">←</span>Pass</button><button class="primary" id="b-yes">Interested<span class="kbd" style="margin:0 0 0 6px">→</span></button></div></div>
     <div class="m-foot"><input id="m-email" type="email" placeholder="Your email, shared only if they accept" value="${esc(store.get('founderContact', ''))}">
-      <div class="m-hint">Click Pass or Interested, press ← or →, or drag the card.</div></div>
+      <div class="m-hint">Click Pass or Interested, press ← or →, or drag the card.</div>
+      <label class="m-hint" style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="m-top" style="width:auto" ${review.topOnly ? 'checked' : ''}> Top schools only</label></div>
   </div></div>`;
   const ov = document.getElementById('ov');
   requestAnimationFrame(() => ov.classList.add('show'));
@@ -376,6 +385,14 @@ function openReview(cid) {
   document.getElementById('b-pass').onclick = () => decide('left');
   document.getElementById('b-yes').onclick = () => decide('right');
   document.getElementById('m-email').oninput = e => store.set('founderContact', e.target.value.trim());
+  document.getElementById('m-top').onchange = e => {
+    review.topOnly = e.target.checked; store.set('topOnly', review.topOnly ? '1' : '0');
+    const decided = new Set(review.all.filter(d => !review.items.includes(d)).map(d => d.candidate_id));
+    review.items = review.all.filter(d => !decided.has(d.candidate_id) && (!review.topOnly || topSchool(d.school)));
+    review.total = review.done + review.items.length;
+    document.getElementById('b-pass').disabled = document.getElementById('b-yes').disabled = false;
+    drawStack();
+  };
   drawStack();
 }
 
@@ -390,6 +407,10 @@ function closeReview() {
 function drawStack() {
   const stack = document.getElementById('stack');
   document.getElementById('prog').style.width = `${review.done / review.total * 100}%`;
+  if (!review.items.length && review.topOnly && !review.done) {
+    stack.innerHTML = `<div class="m-done"><b>No one from a top school here yet</b>Untick “Top schools only” to see everyone the agent matched.</div>`;
+    return;
+  }
   if (!review.items.length) {
     stack.innerHTML = `<div class="m-done"><b>All caught up</b>You reviewed ${review.total} candidate${review.total > 1 ? 's' : ''} and requested ${review.liked} intro${review.liked === 1 ? '' : 's'}.<br>We’ll let you know when they reply.</div>`;
     document.getElementById('b-pass').disabled = document.getElementById('b-yes').disabled = true;
