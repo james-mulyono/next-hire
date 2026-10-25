@@ -371,7 +371,8 @@ const SKILL_RE = { 'Go': /\bgo(lang)?\b/i, 'Java': /\bjava\b(?!script)/i, 'C++':
   'Infrastructure': /infra|platform|devops|\bsre\b/i, 'Distributed systems': /distributed|scal(e|ing|ed)/i, 'Mobile': /mobile|android|\bios\b/i, 'iOS': /\bios\b|swift/i,
   'Product': /\bproduct\b/i, 'Sales': /sales|\bae\b|closed|arr\b/i, 'DevRel': /devrel|developer rel|advocate/i, 'Email / SMTP': /smtp|dkim|spf|email|deliverab/i,
   'Customer success': /customer success|support/i, 'Browser automation': /browser automation|scrap|puppeteer|playwright|chrome/i };
-const textOf = it => [it.strengths, it.roles, it.github_summary, it.school].join(' ');
+const prof = it => { if (!it.profile_json) return null; try { return it._p || (it._p = JSON.parse(it.profile_json)); } catch (e) { return null; } };
+const textOf = it => [it.strengths, it.roles, it.github_summary, it.school, prof(it) ? [prof(it).headline, ...prof(it).skills, ...prof(it).specializations].join(' ') : ''].join(' ');
 const skillsOf = it => SKILLS.filter(k => (SKILL_RE[k] || new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\b', 'i')).test(textOf(it)));
 const rolesOf = it => (it.roles || '').split(/[,;/]| or /).map(r => r.trim().toLowerCase()).filter(r => r.length > 1);
 const locOf = it => /remote/i.test(it.location || '') ? 'Remote' : /\bsf\b|san francisco|bay area/i.test(it.location || '') ? 'SF Bay Area' : (it.location || '').trim() || 'Not stated';
@@ -399,7 +400,10 @@ function swCard(it, cls) {
     ${it.school ? `<div class="sw-meta"><b>${esc(it.school)}</b>${topSchool(it.school) ? ' · top school' : ''}</div>` : ''}
     <div class="sw-src">${it.kind === 'proposed' ? 'Recommended by the agent' : 'Held back by the agent'} for ${esc(it.role || 'this role')}${it.seeded ? ' · sample profile' : ''}${it.has_resume ? ' · resume on file' : ''}</div>
     ${it.roles ? `<div class="sw-f"><span>Looking for</span>${esc(it.roles)}</div>` : ''}
-    ${it.github_summary ? `<div class="sw-f"><span>GitHub (verified)</span>${esc(it.github_summary)}</div>` : ''}
+    ${prof(it) ? `<div class="sw-f"><span>Profile</span>${esc(prof(it).headline)}${prof(it).skills.length ? ' · ' + esc(prof(it).skills.slice(0, 6).join(', ')) : ''}</div>
+      ${prof(it).internships.length ? `<div class="sw-f"><span>Internships</span>${esc(prof(it).internships.map(i => i.title + ' at ' + i.company).join('; '))}</div>` : ''}
+      ${prof(it).projects.length ? `<div class="sw-f"><span>Projects</span>${esc(prof(it).projects.map(p => p.name + ': ' + p.what).join('; '))}</div>` : ''}`
+    : (it.github_summary ? `<div class="sw-f"><span>GitHub (verified)</span>${esc(it.github_summary)}</div>` : '')}
     <div class="sw-f"><span>Strengths</span>${esc(it.strengths)}</div>
     <div class="sw-f"><span>${it.kind === 'proposed' ? 'Why they fit' : 'What’s missing'}</span>${esc(it.kind === 'proposed' ? it.reason : gap)}</div>
   </div>`;

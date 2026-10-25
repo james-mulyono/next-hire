@@ -208,6 +208,58 @@ def _github_summary(link):
             + (f"; last push {last}" if last else ""))[:400]
 
 
+BRIGHTDATA_PROFILES = "gd_l1viktl72bvl7bjuj0"
+
+
+def _brightdata_key():
+    p = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    for line in open(p) if os.path.exists(p) else []:
+        if line.startswith("BRIGHTDATA_API_KEY="):
+            return line.split("=", 1)[1].strip()
+    return os.environ.get("BRIGHTDATA_API_KEY")
+
+
+def _linkedin_text(url):
+    """The candidate's own LinkedIn (they linked it and consented) via Bright Data: role, experience, education. ~45s."""
+    key = _brightdata_key()
+    if not key or "linkedin.com/in/" not in url.lower():
+        return ""
+    r = requests.post(f"https://api.brightdata.com/datasets/v3/scrape?dataset_id={BRIGHTDATA_PROFILES}&format=json",
+                      headers={"Authorization": f"Bearer {key}"}, json=[{"url": url}], timeout=120)
+    data = r.json()
+    rec = data[0] if isinstance(data, list) and data else None
+    if not isinstance(rec, dict) or not rec.get("name"):
+        return ""
+    exp = "; ".join(f"{e.get('title')} at {e.get('company')} ({e.get('start_date', '')}-{e.get('end_date', '')})"
+                    for e in (rec.get("experience") or [])[:8] if e.get("title"))
+    edu = "; ".join(f"{e.get('title')} {e.get('degree') or ''} {e.get('field') or ''}".strip()
+                    for e in (rec.get("education") or [])[:3] if e.get("title"))
+    return (f"position: {rec.get('position') or ''}; about: {(rec.get('about') or '')[:400]}; experience: {exp}; education: {edu}; "
+            f"certifications: {', '.join(c.get('title', '') for c in (rec.get('certifications') or [])[:5])}")[:2000]
+
+
+def _enrich(cid):
+    """Background: LinkedIn via Bright Data, then one structured profile. Never blocks the join."""
+    c = store.one("SELECT * FROM candidates WHERE id=?", (cid,))
+    if not c:
+        return
+    li = ""
+    try:
+        li = _linkedin_text(c["linkedin"] or "")
+    except Exception as e:
+        store.log("ERROR", f"{c['first_name']}: LinkedIn read failed ({type(e).__name__}) → profile from signup, resume and GitHub only")
+    try:
+        prof, usd = llm.build_profile(c, li)
+    except llm.LLMError as e:
+        store.log("ERROR", f"{c['first_name']}: profile summary failed ({e})")
+        return
+    store.ex("UPDATE candidates SET linkedin_summary=?, profile_json=? WHERE id=?", (li, json.dumps(prof), cid))
+    src = ", ".join(x for x, ok in (("resume", c["resume_text"]), ("GitHub", c["github_summary"]), ("LinkedIn", li)) if ok) or "signup answers"
+    woken = store.wake_active()
+    store.log("SIGNAL", f"{c['first_name']}: profile built from {src} — {prof['headline']}; skills: {', '.join(prof['skills'][:6])}"
+                        f"{'; ' + str(len(prof['internships'])) + ' internship(s)' if prof['internships'] else ''} (${usd:.3f}) → re-matching {woken} companies")
+
+
 def _save_resume(token, b64):
     """Optional PDF resume: keep the file (shared only after an accepted intro) and its text (used for matching)."""
     if not b64:
@@ -252,6 +304,8 @@ def join(p: dict = Body(...)):
              (token, first, last, strengths, _clean(p.get("roles")), _clean(p.get("seniority"), 40), _clean(p.get("location"), 80),
               _clean(p.get("availability"), 80), _clean(p.get("contact"), 120), link,
               linkedin, resume_text, resume_file, _clean(p.get("school"), 80), gh, time.time()))
+    cid_new = store.one("SELECT id FROM candidates WHERE token=?", (token,))["id"]
+    threading.Thread(target=_enrich, args=(cid_new,), daemon=True).start()
     woken = store.wake_active()
     store.log("SIGNAL", f"New candidate {first} joined ({strengths[:60]})" + (f" · GitHub verified: {gh[:120]}" if gh else "")
               + f" → re-checking {woken} sleeping companies")
@@ -275,6 +329,7 @@ def inbox(t: str):
             i["founder_contact"] = None
     profile = {k: c[k] for k in ("first_name", "last_name", "strengths", "roles", "seniority", "location", "availability", "contact", "linkedin", "status")}
     profile["has_resume"] = bool(c["resume_file"])
+    profile["summary"] = json.loads(c["profile_json"]) if c["profile_json"] else None
     return {"profile": profile, "intros": intros}
 
 
@@ -336,7 +391,7 @@ def _company_or_404(cid):
     return c
 
 
-DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.school, ca.github_summary, ca.seeded, " \
+DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.school, ca.github_summary, ca.profile_json, ca.seeded, " \
               "(ca.resume_file IS NOT NULL) AS has_resume"
 
 

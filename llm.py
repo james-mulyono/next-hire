@@ -200,6 +200,7 @@ def _pool(candidates):
              "location": c["location"], "availability": c["availability"],
              **({"school": c["school"]} if c.get("school") else {}),
              **({"github_verified": c["github_summary"]} if c.get("github_summary") else {}),
+             **({"profile": json.loads(c["profile_json"])} if c.get("profile_json") else {}),
              **({"resume_excerpt": c["resume_text"][:1500]} if c.get("resume_text") else {})} for c in candidates]
 
 
@@ -305,3 +306,33 @@ def match_brief(company, brief, candidates):
     user = (f"Company: {company['name']}\nRole spec (from the founder's brief): {json.dumps(spec)}\n"
             "Founder's own words:\n" + "\n".join(_brief_lines(brief)) + f"\n\nPool:\n{json.dumps(pool)}")
     return call_json(MATCH_MODEL, MATCH_BRIEF_SYSTEM, user, MATCH_BRIEF_SCHEMA, "match", company["id"], effort="low")
+
+
+PROFILE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "headline": _STR, "skills": _STRS, "specializations": _STRS,
+        "internships": {"type": "array", "items": {"type": "object", "properties": {"title": _STR, "company": _STR, "when": _STR},
+                                                    "required": ["title", "company", "when"], "additionalProperties": False}},
+        "projects": {"type": "array", "items": {"type": "object", "properties": {"name": _STR, "what": _STR},
+                                                 "required": ["name", "what"], "additionalProperties": False}},
+    },
+    "required": ["headline", "skills", "specializations", "internships", "projects"],
+    "additionalProperties": False,
+}
+PROFILE_SYSTEM = """Summarize one candidate's profile from what they shared: their signup answers, resume, and the GitHub and LinkedIn
+profiles they linked and consented to us reading. Use only facts in the input; never guess.
+headline: one line, e.g. "Backend engineer, 3 yrs, Go and Postgres". skills: up to 12 concrete skills or tools.
+specializations: up to 4 areas. internships: past internships only (title, company, when). projects: up to 4 notable
+projects from GitHub repos or LinkedIn, each with a short 'what'."""
+
+
+def build_profile(cand, linkedin_text):
+    parts = [f"Signup: strengths: {cand.get('strengths')}; wants: {cand.get('roles')}; seniority: {cand.get('seniority')}; school: {cand.get('school') or 'n/a'}"]
+    if cand.get("resume_text"):
+        parts.append(f"Resume: {cand['resume_text'][:2500]}")
+    if cand.get("github_summary"):
+        parts.append(f"GitHub (verified): {cand['github_summary']}")
+    if linkedin_text:
+        parts.append(f"LinkedIn (verified): {linkedin_text}")
+    return call_json(MATCH_MODEL, PROFILE_SYSTEM, "\n".join(parts), PROFILE_SCHEMA, "profile", effort="low", max_tokens=1500)

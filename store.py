@@ -61,7 +61,7 @@ def _ensure_column(table, col, decl):
 
 with _lock:
     _conn.executescript(SCHEMA)
-    for col in ("last_name", "linkedin", "resume_text", "resume_file", "school", "github_summary"):  # added after launch; migrate in place
+    for col in ("last_name", "linkedin", "resume_text", "resume_file", "school", "github_summary", "linkedin_summary", "profile_json"):  # added after launch; migrate in place
         _ensure_column("candidates", col, "TEXT")
     _ensure_column("intros", "brief_id", "INTEGER")  # DBs created before founder briefs existed
     _conn.commit()
