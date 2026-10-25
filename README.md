@@ -12,7 +12,7 @@ A 6-person startup needs hire #7. The founder has no recruiter and no time to wr
 2. **Forecasts the next hire** with evidence and a confidence score, often before the job is posted.
    Example: *"5 APAC roles posted in two weeks → Head of APAC is next."*
 3. **Researches on its own when unsure.** Below the confidence bar, it searches recent company news (funding, launches, new markets) and re-forecasts. No founder needs to be online.
-4. **Matches an opt-in talent pool.** People join in 30 seconds by QR code and can add a resume, LinkedIn and school.
+4. **Matches an opt-in talent pool.** People join in 30 seconds by QR code and can add a resume, LinkedIn, GitHub and school. With their consent, the agent reads the GitHub and LinkedIn profiles they linked (LinkedIn through Bright Data) and builds one profile from everything: skills, internships and projects. Founders filter on it the way they would on a job board.
 5. **Proposes intros only when confident.** Everyone else is held back, and the agent says why.
 6. **Double opt-in.** The founder swipes right, then the candidate accepts. Only then are contact details, LinkedIn and resume shared.
 
