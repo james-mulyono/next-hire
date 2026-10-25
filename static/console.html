@@ -60,6 +60,10 @@
   .bar { height:6px; background:#21262d; border-radius:4px; overflow:hidden; margin-top:6px; } .bar i { display:block; height:100%; background:var(--accent); }
   .bar i.over { background:var(--warn); }
   .warnbox { background:#3b2e0b; border:1px solid var(--warn); color:var(--warn); padding:8px 12px; margin:12px 20px 0; border-radius:8px; }
+  /* flat look: square corners, no outlined boxes, pills or badges */
+  *:not(.live):not(.spin) { border-radius:0 !important; }
+  .card, .panel, .fc, .note, .contact, .askbox, .warnbox, .chip, .pill, .badge, .tags, .pills label, input, textarea, select, button { border:0 !important; outline:none; box-shadow:none; }
+  .badge, .pill { background:none !important; padding:0 0 0 8px; text-transform:none; font-weight:500; color:var(--muted) !important; }
 </style>
 </head>
 <body>
@@ -145,7 +149,7 @@ function card(c) {
   const pct = Math.min(100, c.spend_hour / c.budget_hour * 100);
   const status = c.status === 'active' && c.sleeping_s > 0 ? `sleeping ${hms(c.sleeping_s)}` : c.status;
   const src = c.source === 'brief' ? '<span class="badge src-brief">Founder brief</span>' : '<span class="badge src-forecast">Forecast from job board</span>';
-  let html = `<div class="card"><h3>${esc(c.name)} <span class="badge ${esc(c.status)}">${esc(status)}</span>${c.added_by === 'judge' ? '<span class="badge judge">judge</span>' : ''}${src}</h3>
+  let html = `<div class="card"><h3>${esc(c.name)} ${status === 'active' ? '' : `<span class="badge">${esc(status)}</span>`}${c.added_by === 'judge' ? '<span class="badge judge">judge</span>' : ''}${src}</h3>
     <div class="muted small">${esc(c.one_liner || c.domain || 'no public info yet')}${c.board ? ` · ${esc(c.board)} · ${c.postings} postings` : ''}</div>`;
   if (c.judge_note) html += `<div class="small" style="margin-top:6px">Founder note: “${esc(c.judge_note)}”</div>`;
   c.briefs.forEach(b => {
@@ -182,7 +186,6 @@ function card(c) {
       <button onclick="window.open('/founder?company=${c.id}')">Hiring brief ↗</button>
       <button onclick="act.feedback(${c.id})">Founder feedback</button>
       <button onclick="act.squeeze(${c.id})">${c.budget_hour < 0.05 ? 'Restore budget' : 'Squeeze budget'}</button>
-      ${c.status !== 'stopped' ? `<button class="bad" onclick="act.filled(${c.id})">Role filled</button>` : ''}
     </div></div>`;
   return html;
 }

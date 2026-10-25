@@ -22,6 +22,10 @@
   .yes { background:var(--accent); color:#06281a; } .no { background:#30363d; color:var(--text); }
   .small { background:transparent; border:1px solid var(--line); color:var(--muted); font-weight:500; }
   .contact { margin-top:10px; padding:10px; border-radius:8px; background:#0b2216; border:1px solid #23573a; word-break:break-word; }
+  /* flat look: square corners, no outlined boxes, pills or badges */
+  *:not(.live):not(.spin) { border-radius:0 !important; }
+  .card, .panel, .fc, .note, .contact, .askbox, .warnbox, .chip, .pill, .badge, .tags, .pills label, input, textarea, select, button { border:0 !important; outline:none; box-shadow:none; }
+  .badge, .pill { background:none !important; padding:0 0 0 8px; text-transform:none; font-weight:500; color:var(--muted) !important; }
 </style>
 </head>
 <body>

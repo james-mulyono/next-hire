@@ -47,6 +47,10 @@
   .contact { margin-top:8px; padding:8px; border-radius:8px; background:#0b2216; border:1px solid #23573a; word-break:break-word; }
   .spin { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--accent); margin-right:6px; animation:pulse 1.2s infinite; }
   @keyframes pulse { 50% { opacity:.25; } }
+  /* flat look: square corners, no outlined boxes, pills or badges */
+  *:not(.live):not(.spin) { border-radius:0 !important; }
+  .card, .panel, .fc, .note, .contact, .askbox, .warnbox, .chip, .pill, .badge, .tags, .pills label, input, textarea, select, button { border:0 !important; outline:none; box-shadow:none; }
+  .badge, .pill { background:none !important; padding:0 0 0 8px; text-transform:none; font-weight:500; color:var(--muted) !important; }
 </style>
 </head>
 <body>
@@ -156,7 +160,7 @@ const list = items => items && items.length ? `<ul class="list">${items.map(i =>
 function view(d) {
   const b = d.brief, s = b.scope;
   let h = `<h1>${esc(d.company.name)}</h1>
-    <div><span class="pill ${esc(b.status)}">${esc(b.status)}</span> <span class="muted">${esc(b.start_timing)}${b.seeded ? ' · sample brief' : ''}</span></div>`;
+    <div><span class="muted">${esc(b.start_timing)}${b.seeded ? ' · sample brief' : ''}</span></div>`;
   if (params.get('new')) h += `<div class="card" style="border-color:#23573a">Brief received. Bookmark this page: matches and questions show up here.</div>`;
   if (!s) {
     h += `<div class="card"><span class="spin"></span>The agent is reading your brief — usually within one cycle.<div class="muted" style="margin-top:6px">“${esc(b.description)}”</div></div>`;
@@ -175,7 +179,7 @@ function view(d) {
   }
   d.asks.forEach(a => {
     h += `<div class="card ask"><b>${esc(a.message)}</b><div class="actions">` + (a.kind === 'stale'
-      ? `<button data-ask="${a.id}" data-act="yes">Yes, still hiring</button><button class="ghost" data-status="paused">Pause</button><button class="ghost bad" data-status="filled">Filled</button>`
+      ? `<button data-ask="${a.id}" data-act="yes">Yes, still hiring</button>`
       : `<button onclick="location.href='/founder?company=${d.company.id}'">Add a brief</button><button class="ghost" data-ask="${a.id}" data-act="dismiss">Not now</button>`) + `</div></div>`;
   });
   if (d.suggestion) h += `<div class="card"><div class="muted small">Forecast from your job board</div>${esc(d.suggestion)}
@@ -190,9 +194,7 @@ function view(d) {
         ${i.linkedin ? ` · <a href="${esc(i.linkedin)}" target="_blank" rel="noopener" style="color:inherit">LinkedIn</a>` : ''}
         ${i.has_resume ? ` · <a href="/api/intro/${i.id}/resume" target="_blank" style="color:inherit">Resume (PDF)</a>` : ''}</div>` : ''}</div>`;
   });
-  h += `<div class="actions" style="margin-top:16px">` + (b.status === 'active'
-    ? `<button class="ghost" data-status="paused">Pause</button><button class="ghost bad" data-status="filled">Mark filled</button>`
-    : `<button class="ghost" data-status="active">Resume</button>`) + `<button class="ghost" onclick="location.href='/founder?company=${d.company.id}'">New brief</button></div>`;
+  h += `<div class="actions" style="margin-top:16px"><button class="ghost" onclick="location.href='/founder?company=${d.company.id}'">New brief</button></div>`;
   h += `<h2 style="margin-top:20px">What the agent is doing</h2><div class="card log">${d.log.map(l => `<div>${clock(l.ts)} <b>${esc(l.kind)}</b> ${esc(l.message)}</div>`).join('') || '<span class="muted">nothing yet</span>'}</div>`;
   return h;
 }

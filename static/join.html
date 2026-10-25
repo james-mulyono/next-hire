@@ -20,6 +20,10 @@
   button { width:100%; padding:14px; border:0; border-radius:10px; background:var(--accent); color:#06281a; font-weight:700; font-size:17px; }
   button:disabled { opacity:.6; }
   .err { color:#ff7b72; margin-top:10px; min-height:1em; }
+  /* flat look: square corners, no outlined boxes, pills or badges */
+  *:not(.live):not(.spin) { border-radius:0 !important; }
+  .card, .panel, .fc, .note, .contact, .askbox, .warnbox, .chip, .pill, .badge, .tags, .pills label, input, textarea, select, button { border:0 !important; outline:none; box-shadow:none; }
+  .badge, .pill { background:none !important; padding:0 0 0 8px; text-transform:none; font-weight:500; color:var(--muted) !important; }
 </style>
 </head>
 <body>
