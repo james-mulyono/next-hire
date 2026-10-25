@@ -78,6 +78,7 @@
 <header>
   <h1>Bridge</h1>
   <div class="stat">Running unsupervised <b id="uptime">–</b></div>
+  <div class="stat">Show predictions ≥ <select id="minconf"><option value="0">any</option><option value="0.5">0.50</option><option value="0.65">0.65</option><option value="0.75">0.75</option></select></div>
   <div class="stat"><b id="watching">–</b> companies</div>
   <div class="stat"><b id="cands">–</b> candidates</div>
   <div class="stat"><b id="spend">–</b> spent</div>
@@ -104,6 +105,10 @@
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hms = s => { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h ? `${h}h${String(m).padStart(2,'0')}m` : `${m}m${String(s%60).padStart(2,'0')}s`; };
 const clock = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false});
+let minConf = 0;
+try { minConf = Number(localStorage.getItem('minConf') || 0); } catch (e) {}
+document.getElementById('minconf').value = String(minConf);
+document.getElementById('minconf').onchange = e => { minConf = Number(e.target.value); try { localStorage.setItem('minConf', minConf); } catch (err) {} };
 const joinUrl = location.origin + '/join';
 document.getElementById('joinurl').textContent = joinUrl;
 try { new QRCode(document.getElementById('qr'), {text: joinUrl, width: 132, height: 132}); } catch (e) { document.getElementById('qr').hidden = true; }
@@ -171,10 +176,15 @@ function card(c) {
   if (c.suggestion) html += `<div class="muted small">${esc(c.suggestion)} <span class="muted">(forecast from job board)</span></div>`;
   c.asks.forEach(a => { html += `<div class="askbox">Asked founder: ${esc(a.message)}</div>`; });
   if (top && !c.briefs.length) {
-    const conf = Number(top.confidence);
-    html += `<div class="fc"><div class="muted small">Forecast: next hire</div><div class="role">${esc(top.role)} <span class="conf ${conf >= 0.7 ? 'hi' : 'lo'}">${conf.toFixed(2)}</span></div>
-      <div class="small">${esc(top.why)}</div><ul class="ev">${top.evidence.slice(0, 3).map(e => `<li>${esc(e)}</li>`).join('')}</ul>
-      ${f.forecasts.slice(1).map(o => `<div class="muted small" style="margin-top:4px">Also: ${esc(o.role)} (${Number(o.confidence).toFixed(2)})</div>`).join('')}</div>`;
+    const shown = f.forecasts.filter(o => Number(o.confidence) >= minConf);
+    if (!shown.length) {
+      html += `<div class="fc"><div class="muted small">No prediction at or above ${minConf.toFixed(2)} confidence (best: ${esc(top.role)}, ${Number(top.confidence).toFixed(2)})</div></div>`;
+    } else {
+      const t = shown[0], conf = Number(t.confidence);
+      html += `<div class="fc"><div class="muted small">Forecast: next hire</div><div class="role">${esc(t.role)} <span class="conf ${conf >= 0.65 ? 'hi' : 'lo'}">${conf.toFixed(2)}</span></div>
+      <div class="small">${esc(t.why)}</div><ul class="ev">${t.evidence.slice(0, 3).map(e => `<li>${esc(e)}</li>`).join('')}</ul>
+      ${shown.slice(1).map(o => `<div class="muted small" style="margin-top:4px">Also: ${esc(o.role)} (${Number(o.confidence).toFixed(2)})</div>`).join('')}</div>`;
+    }
   } else if (c.status === 'asking') {
     html += `<div class="fc" style="border-color:var(--purple)">Stuck: no public job board or website found. Waiting for the founder.</div>`;
   }

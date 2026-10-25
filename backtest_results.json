@@ -1,0 +1,973 @@
+[
+ {
+  "company": "resend",
+  "board": "ashby",
+  "visible": 10,
+  "later": 4,
+  "later_titles": [
+   "Software Engineer, Trust & Safety ",
+   "Software Engineer, Trust & Safety ",
+   "Platform Engineer",
+   "Platform Engineer"
+  ],
+  "later_families": {
+   "engineering": 4
+  },
+  "predictions": [
+   [
+    "Senior/Staff Backend Engineer, MTA (email deliverability and infrastructure)",
+    0.55
+   ],
+   [
+    "Developer Advocate / Developer Relations Engineer",
+    0.25
+   ],
+   [
+    "Support Engineer / second Customer Success Engineer",
+    0.25
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.013454
+ },
+ {
+  "company": "posthog",
+  "board": "ashby",
+  "visible": 7,
+  "later": 3,
+  "later_titles": [
+   "Product Manager, Observability (ex-founder or ex-product engineer)",
+   "Developer Marketer - Sales",
+   "Animator & Motion Graphics Designer"
+  ],
+  "later_families": {
+   "engineering": 2,
+   "product": 1,
+   "sales": 1,
+   "design": 1
+  },
+  "predictions": [
+   [
+    "Site Reliability Engineer (EMEA timezone)",
+    0.4
+   ],
+   [
+    "Sales Engineer / Solutions Engineer (Technical Account Executive)",
+    0.25
+   ],
+   [
+    "Additional Product Engineer or AI/ML Engineer",
+    0.25
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.013237999999999998
+ },
+ {
+  "company": "linear",
+  "board": "ashby",
+  "visible": 24,
+  "later": 10,
+  "later_titles": [
+   "Creative Producer",
+   "Product Support Specialist, APAC",
+   "Creative Producer",
+   "Solutions Engineer, APAC",
+   "Product Support Specialist, APAC",
+   "Account Executive, Growth "
+  ],
+  "later_families": {
+   "support": 4,
+   "engineering": 2,
+   "sales": 2,
+   "marketing": 2,
+   "security": 1
+  },
+  "predictions": [
+   [
+    "Sales Engineer / Enterprise Account Executive",
+    0.5
+   ],
+   [
+    "Enterprise Account Executive",
+    0.4
+   ],
+   [
+    "Data Scientist / Data Analyst",
+    0.25
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.013382000000000002
+ },
+ {
+  "company": "supabase",
+  "board": "ashby",
+  "visible": 41,
+  "later": 20,
+  "later_titles": [
+   "Platform Engineer, Managed Postgres",
+   "Postgres Deployment Engineer",
+   "Data API Engineer",
+   "Software Engineer - Storage",
+   "Site Reliability Engineer",
+   "Executive Assistant to the CEO"
+  ],
+  "later_families": {
+   "engineering": 11,
+   "data": 3,
+   "product": 2,
+   "ML": 1,
+   "operations": 1,
+   "marketing": 1
+  },
+  "predictions": [
+   [
+    "Engineering Manager (Platform/Infrastructure)",
+    0.5
+   ],
+   [
+    "Site Reliability / Database Reliability Engineer (Multigres/OrioleDB operations)",
+    0.4
+   ],
+   [
+    "Technical Account Manager / Enterprise Customer Success",
+    0.45
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.015941999999999998
+ },
+ {
+  "company": "modal",
+  "board": "ashby",
+  "visible": 33,
+  "later": 10,
+  "later_titles": [
+   "Talent Partner, GTM",
+   "Talent Partner, Technical",
+   "Member of Technical Staff - SDK (Stockholm)",
+   "Field Marketing Manager",
+   "Head of IT",
+   "Member of Technical Staff - Inference Runtime"
+  ],
+  "later_families": {
+   "recruiting": 2,
+   "marketing": 1,
+   "operations": 1,
+   "data": 1,
+   "engineering": 1
+  },
+  "predictions": [
+   [
+    "Solutions Engineer / Forward Deployed Engineer (additional, GTM-facing technical hire)",
+    0.5
+   ],
+   [
+    "Member of Technical Staff - Networking / Scheduler (additional infrastructure systems engineers, Stockholm or NYC)",
+    0.35
+   ],
+   [
+    "Product Marketing Manager",
+    0.25
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.016448
+ },
+ {
+  "company": "replit",
+  "board": "ashby",
+  "visible": 32,
+  "later": 5,
+  "later_titles": [
+   "Senior Software Engineer, Compute Platform",
+   "Cloud Security Lead",
+   "Security Engineer - Incident Response",
+   "Software Engineering Intern \u2013 Winter 2027 ",
+   "Data Scientist, Growth"
+  ],
+  "later_families": {
+   "engineering": 3,
+   "security": 2,
+   "data": 1,
+   "marketing": 1
+  },
+  "predictions": [
+   [
+    "Enterprise Account Executive / Enterprise Sales Lead",
+    0.5
+   ],
+   [
+    "Product Manager, Payments / Monetization (Agentic Commerce)",
+    0.4
+   ],
+   [
+    "Regional Growth Lead (EMEA or APAC)",
+    0.3
+   ]
+  ],
+  "hit1": false,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.0147
+ },
+ {
+  "company": "cursor",
+  "board": "ashby",
+  "visible": 106,
+  "later": 20,
+  "later_titles": [
+   "Software Engineer, RL Data",
+   "Software Engineer, Compute Infra",
+   "Account Executive, Commercial",
+   "Forward Deployed Engineer",
+   "Forward Deployed Engineer - EMEA",
+   "Field Marketing Manager"
+  ],
+  "later_families": {
+   "data": 1,
+   "engineering": 11,
+   "sales": 1,
+   "marketing": 4,
+   "design": 1,
+   "operations": 2
+  },
+  "predictions": [
+   [
+    "Partner / Channel Manager (Systems Integrators and Resellers)",
+    0.35
+   ],
+   [
+    "Sales Enablement / GTM Operations Lead",
+    0.33
+   ],
+   [
+    "Senior Customer Support / Technical Support Engineer (regional, APJ or EMEA)",
+    0.3
+   ]
+  ],
+  "hit1": false,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.016354
+ },
+ {
+  "company": "perplexity",
+  "board": "ashby",
+  "visible": 106,
+  "later": 26,
+  "later_titles": [
+   "Member of Tehnical Staff (Senior QA Web)",
+   "Member of Technical Staff (AI Software Engineer, Agents)",
+   "Member of Technical Staff (Software Engineer, Training Infrastructure)",
+   "Recruiting Coordinator ",
+   "Go-to-Market Recruiter ",
+   "Technical Recruiter, AI"
+  ],
+  "later_families": {
+   "ML": 4,
+   "engineering": 10,
+   "recruiting": 3,
+   "marketing": 2,
+   "data": 3,
+   "operations": 3,
+   "sales": 2
+  },
+  "predictions": [
+   [
+    "Enterprise Sales Engineer / Solutions Engineer",
+    0.5
+   ],
+   [
+    "Additional Account Executives / Sales leadership (Enterprise Sales Manager)",
+    0.4
+   ],
+   [
+    "Member of Technical Staff (Software Engineer, Computer / Agents) - more senior or additional",
+    0.3
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.018647999999999998
+ },
+ {
+  "company": "mercor",
+  "board": "ashby",
+  "visible": 97,
+  "later": 15,
+  "later_titles": [
+   "Ops Recruiter",
+   "Member of Design Staff",
+   "Brand Design Lead",
+   "GTM Recruiter",
+   "G&A Recruiter",
+   "Corporate Finance Senior / Associate"
+  ],
+  "later_families": {
+   "recruiting": 3,
+   "design": 2,
+   "marketing": 2,
+   "operations": 2,
+   "ML": 1
+  },
+  "predictions": [
+   [
+    "Senior/Staff Software Engineer or Engineering Manager, Frontier Data Products & Applied AI",
+    0.6
+   ],
+   [
+    "Enterprise Sales / Account Executive (additional founding AEs and healthcare/enterprise sales)",
+    0.45
+   ],
+   [
+    "Trust & Safety / Security Engineer (fraud, identity, compliance)",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": false,
+  "usd": 0.016782
+ },
+ {
+  "company": "vercel",
+  "board": "greenhouse",
+  "visible": 82,
+  "later": 13,
+  "later_titles": [
+   "Account Executive, Commercial",
+   "Community Manager, Experiential Marketing",
+   "Customer Support Engineer",
+   "Engineering Director, Vercel for Platforms",
+   "GTM Engineer",
+   "Internal Communications Manager "
+  ],
+  "later_families": {
+   "sales": 1,
+   "marketing": 1,
+   "engineering": 5,
+   "support": 1,
+   "ML": 1,
+   "data": 2,
+   "operations": 2,
+   "product": 1
+  },
+  "predictions": [
+   [
+    "Solutions Architect (EMEA, mid-to-senior individual contributors)",
+    0.6
+   ],
+   [
+    "Senior/Staff Software Engineer, Agentic Infrastructure",
+    0.5
+   ],
+   [
+    "Software Engineer, Dashboard / Core Product (frontend-focused)",
+    0.4
+   ]
+  ],
+  "hit1": false,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.017192000000000002
+ },
+ {
+  "company": "ramp",
+  "board": "ashby",
+  "visible": 132,
+  "later": 35,
+  "later_titles": [
+   "Product Manager | Procurement",
+   "Product Manager | Growth",
+   "Account Manager | Strategic",
+   "Channel Partner Manager, Accounting  ",
+   "Partner Development Representative | Reseller",
+   "AI Partnerships Manager"
+  ],
+  "later_families": {
+   "product": 2,
+   "marketing": 6,
+   "sales": 9,
+   "ML": 1,
+   "data": 3,
+   "security": 3,
+   "operations": 3,
+   "engineering": 6,
+   "recruiting": 1
+  },
+  "predictions": [
+   [
+    "Senior/Staff Software Engineer, Stablecoin & Payments (incl. compliance-oriented engineering)",
+    0.45
+   ],
+   [
+    "Enterprise Account Executive / Sales Engineering (Enterprise & Public Sector)",
+    0.5
+   ],
+   [
+    "Channel/Partnerships Manager (Accounting & Advisory)",
+    0.4
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.016356
+ },
+ {
+  "company": "notion",
+  "board": "ashby",
+  "visible": 117,
+  "later": 23,
+  "later_titles": [
+   "Manager, Sales Development",
+   "Outcomes Architect Manager",
+   "Lifecycle Marketing Manager, Campaign Strategy & Execution",
+   "Startup Market Lead, AMER",
+   "Campaign Manager, Brand",
+   "Sales Strategy & Operations Manager, APAC"
+  ],
+  "later_families": {
+   "sales": 3,
+   "marketing": 4,
+   "operations": 2,
+   "product": 2,
+   "recruiting": 5,
+   "engineering": 3,
+   "support": 1,
+   "ML": 1
+  },
+  "predictions": [
+   [
+    "Solutions Consultant / Outcomes Architect (post-sales technical GTM) in EMEA and APAC",
+    0.65
+   ],
+   [
+    "Regional Sales leaders / Account Executives for DACH and Europe",
+    0.45
+   ],
+   [
+    "Senior AI / Developer Platform Software Engineer",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.01731
+ },
+ {
+  "company": "openai",
+  "board": "ashby",
+  "visible": 636,
+  "later": 158,
+  "later_titles": [
+   "Senior Manager, Occupancy Planning & Workplace Strategy ",
+   "Forward Deployed Engineer - Paris",
+   "Forward Deployed Engineer - Munich",
+   "Account Director, Federal Civilian",
+   "Software Engineer, Identity Infrastructure ",
+   "Strategy & Operations, Support"
+  ],
+  "later_families": {
+   "engineering": 61,
+   "operations": 19,
+   "support": 6,
+   "ML": 20,
+   "design": 6,
+   "data": 8,
+   "marketing": 13,
+   "recruiting": 4,
+   "sales": 4,
+   "security": 5,
+   "product": 1
+  },
+  "predictions": [
+   [
+    "Applied AI Engineer, Startups (Codex) - additional international markets",
+    0.6
+   ],
+   [
+    "Forward Deployed Engineer / Forward Deployed Engineering team members (NYC)",
+    0.5
+   ],
+   [
+    "Robotics Software/Controls Engineer",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.017096
+ },
+ {
+  "company": "anthropic",
+  "board": "greenhouse",
+  "visible": 534,
+  "later": 147,
+  "later_titles": [
+   "3P Revenue Accounting & Reporting",
+   "Anthropic STEM Fellow",
+   "Applied AI Architect",
+   "Applied AI Architect,  Beneficial Deployments (Life Sciences Community & Enablement)",
+   "Applied AI Architect, Cyber Specialist ",
+   "Applied AI Architect, Partnerships"
+  ],
+  "later_families": {
+   "ML": 25,
+   "marketing": 12,
+   "engineering": 43,
+   "security": 12,
+   "operations": 12,
+   "recruiting": 3,
+   "data": 13,
+   "support": 5,
+   "sales": 17,
+   "devrel": 1,
+   "design": 3,
+   "product": 4
+  },
+  "predictions": [
+   [
+    "Applied AI Architect (additional international/industry-specific pods, e.g. Partnerships or Industries in new APAC/EMEA markets)",
+    0.6
+   ],
+   [
+    "Data Center / Compute Capacity Operations Lead (more senior or additional hardware infrastructure operations roles)",
+    0.4
+   ],
+   [
+    "Public Sector Account Executive / Partnerships (Washington, DC and APAC)",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.018708
+ },
+ {
+  "company": "figma",
+  "board": "greenhouse",
+  "visible": 115,
+  "later": 23,
+  "later_titles": [
+   "Account Executive, Federal - State & Local",
+   "Brand Designer, Web",
+   "Business Systems Analyst",
+   "Community Support Specialist (Bengaluru, India)",
+   "Compliance Engineer",
+   "Customer Support Specialist (Bengaluru, India)"
+  ],
+  "later_families": {
+   "sales": 2,
+   "design": 2,
+   "marketing": 2,
+   "data": 2,
+   "support": 4,
+   "security": 2,
+   "engineering": 6,
+   "recruiting": 1,
+   "ML": 3,
+   "product": 1
+  },
+  "predictions": [
+   [
+    "Account Executive, Enterprise/Strategic (additional international markets, e.g. Latin America or APAC)",
+    0.72
+   ],
+   [
+    "Software/ML Engineer focused on AI and context (e.g. Applied AI or Forward Deployed Engineer, more senior)",
+    0.45
+   ],
+   [
+    "Sales/Customer Enablement or Solutions role in EMEA/APAC",
+    0.3
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "sales",
+  "baseline_hit": true,
+  "usd": 0.017315999999999998
+ },
+ {
+  "company": "stripe",
+  "board": "greenhouse",
+  "visible": 571,
+  "later": 148,
+  "later_titles": [
+   "Account Executive - Bridge",
+   "Account Executive, Bridge - Hunter (Stripe Crypto and Stablecoins)",
+   "Account Executive, Commercial Hunter, AUNZ",
+   "Account Executive, Enterprise Grower (Benelux)",
+   "Account Executive - Enterprise (Grower) - French Speaking ",
+   "Account Executive - Enterprise (Hunter) - Belgium"
+  ],
+  "later_families": {
+   "sales": 44,
+   "data": 8,
+   "engineering": 36,
+   "operations": 8,
+   "marketing": 8,
+   "support": 10,
+   "recruiting": 2,
+   "product": 10,
+   "ML": 5,
+   "design": 5,
+   "security": 3
+  },
+  "predictions": [
+   [
+    "Sales Engineer / Solutions Architect (product-specialist, AI/crypto/billing)",
+    0.55
+   ],
+   [
+    "Sales Development Representative / Sales Operations and Enablement",
+    0.35
+   ],
+   [
+    "Senior Abuse / Fraud Investigator or Abuse Research Engineering lead",
+    0.25
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.019434
+ },
+ {
+  "company": "brex",
+  "board": "greenhouse",
+  "visible": 222,
+  "later": 32,
+  "later_titles": [
+   "Accountant Partnerships Manager",
+   "Accountant Partnerships Manager",
+   "Accounting Partner Growth Manager",
+   "Accounting Partner Growth Manager",
+   "Director, Marketing Operations",
+   "Director, Marketing Operations"
+  ],
+  "later_families": {
+   "marketing": 8,
+   "operations": 8,
+   "engineering": 5,
+   "sales": 4,
+   "data": 2
+  },
+  "predictions": [
+   [
+    "Enterprise/Embedded Finance Sales Engineer or Solutions Consultant",
+    0.4
+   ],
+   [
+    "Senior/Staff Software Engineer, Bill Pay or Travel (product engineers for new engineering managers)",
+    0.4
+   ],
+   [
+    "Compliance/Risk Analyst (credit and enterprise risk)",
+    0.3
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.017164
+ },
+ {
+  "company": "plaid",
+  "board": "ashby",
+  "visible": 92,
+  "later": 43,
+  "later_titles": [
+   "Product Manager - Connectivity Platform",
+   "Product Designer - Dashboard",
+   "Senior Analytics Engineer",
+   "Staff Machine Learning Engineer (Research Scientist) - DFAI",
+   "Software Engineer - Security Engineering",
+   "Social Community Manager"
+  ],
+  "later_families": {
+   "engineering": 15,
+   "product": 2,
+   "design": 1,
+   "data": 3,
+   "ML": 1,
+   "security": 3,
+   "marketing": 3,
+   "operations": 3,
+   "recruiting": 2,
+   "support": 3,
+   "sales": 9
+  },
+  "predictions": [
+   [
+    "Senior/Staff Software Engineer, AI Applications & Tooling",
+    0.65
+   ],
+   [
+    "Account Executive, Credit/Payments (additional vertical AEs and sales managers)",
+    0.55
+   ],
+   [
+    "Security Engineer, Detection and Response (team hires under new Head)",
+    0.4
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.016834000000000002
+ },
+ {
+  "company": "elevenlabs",
+  "board": "ashby",
+  "visible": 48,
+  "later": 111,
+  "later_titles": [
+   "Account Manager - India ",
+   "Account Executive - Japan",
+   "Full-Stack Engineer (Backend Leaning)",
+   "Forward Deployed Engineer - Software Engineer - USA",
+   "Account Executive, Mid Market - India ",
+   "Research Engineer"
+  ],
+  "later_families": {
+   "sales": 26,
+   "engineering": 34,
+   "ML": 4,
+   "operations": 7,
+   "support": 5,
+   "recruiting": 4,
+   "data": 5,
+   "marketing": 3,
+   "product": 2,
+   "devrel": 1
+  },
+  "predictions": [
+   [
+    "Enterprise Solutions Engineer / Deployment Strategist (additional regional hires)",
+    0.68
+   ],
+   [
+    "Customer Success / Account Manager (regional)",
+    0.5
+   ],
+   [
+    "Trust & Safety / Security Engineer",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "sales",
+  "baseline_hit": true,
+  "usd": 0.01577
+ },
+ {
+  "company": "harvey",
+  "board": "ashby",
+  "visible": 252,
+  "later": 106,
+  "later_titles": [
+   "Strategic Account Executive, DACH",
+   "Enterprise Account Executive, ANZ",
+   "Legal Engineer, EMEA ",
+   "Associate Commercial Counsel, London",
+   "Legal Innovation Partner",
+   "Senior Technical Recruiter"
+  ],
+  "later_families": {
+   "sales": 20,
+   "engineering": 19,
+   "operations": 18,
+   "recruiting": 11,
+   "data": 7,
+   "support": 6,
+   "design": 1,
+   "ML": 2,
+   "marketing": 4,
+   "product": 2,
+   "security": 2
+  },
+  "predictions": [
+   [
+    "Account Executive / Sales Development team for new international markets (Munich/Dublin/APAC)",
+    0.7
+   ],
+   [
+    "Legal Engineering Manager / Legal Engineer (additional regions and practice areas)",
+    0.55
+   ],
+   [
+    "Recruiting Coordinator / Technical Recruiter",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.016128
+ },
+ {
+  "company": "cohere",
+  "board": "ashby",
+  "visible": 91,
+  "later": 25,
+  "later_titles": [
+   "Revenue Enablement Manager - EMEA",
+   "Forward Deployed Engineer, Agentic Platform (Korea)",
+   "VP Sales, EMEA",
+   "Senior Account Executive, Germany PUBSEC (Berlin, Germany)",
+   "Senior Sales Operations Specialist",
+   "Staff/Senior Staff Software Engineer, Agent Infrastructure"
+  ],
+  "later_families": {
+   "engineering": 8,
+   "sales": 5,
+   "operations": 4,
+   "security": 1,
+   "data": 4,
+   "design": 1,
+   "ML": 1
+  },
+  "predictions": [
+   [
+    "Forward Deployed Engineer (additional regions or Engineering Manager/Lead level), Agentic Platform / Sovereign AI",
+    0.68
+   ],
+   [
+    "Public Sector / Defence Sales Engineer or Solutions Architect (government-focused pre-sales)",
+    0.5
+   ],
+   [
+    "APAC go-to-market hire (Japan/Korea Solutions Architect or Sales Engineer, or APAC marketing lead)",
+    0.4
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.019094
+ },
+ {
+  "company": "datadog",
+  "board": "greenhouse",
+  "visible": 356,
+  "later": 77,
+  "later_titles": [
+   "Accounts Payable Analyst",
+   "Associate Customer Success Manager - Boston",
+   "Associate Customer Success Manager - Denver",
+   "Commercial Account Executive - Israel",
+   "Commercial Customer Success Manager (Key Accounts) - DACH",
+   "Compensation Program Manager"
+  ],
+  "later_families": {
+   "data": 7,
+   "support": 5,
+   "sales": 18,
+   "recruiting": 3,
+   "operations": 5,
+   "security": 7,
+   "marketing": 2,
+   "product": 3,
+   "engineering": 17,
+   "ML": 4,
+   "design": 4
+  },
+  "predictions": [
+   [
+    "Commercial Sales Engineer (international/APAC and LATAM, incl. language-specific)",
+    0.75
+   ],
+   [
+    "Commercial Account Executive (new regional markets: LATAM, Italy, Hong Kong, Australia)",
+    0.6
+   ],
+   [
+    "AI Research Scientist/Engineer (DAIR)",
+    0.35
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "sales",
+  "baseline_hit": true,
+  "usd": 0.01943
+ },
+ {
+  "company": "discord",
+  "board": "greenhouse",
+  "visible": 39,
+  "later": 7,
+  "later_titles": [
+   "Engineering Manager, Notifications",
+   "Group Product Manager, Data/ML",
+   "IT Ops Engineer - Lisbon",
+   "Product Designer, Player Experiences",
+   "Public Affairs Advisor",
+   "Senior Engineering Manager, Nitro"
+  ],
+  "later_families": {
+   "engineering": 3,
+   "ML": 1,
+   "data": 1,
+   "product": 1,
+   "design": 1
+  },
+  "predictions": [
+   [
+    "Senior/Staff Software Engineer, Consumer Revenue (monetization, e.g. payments/ML)",
+    0.6
+   ],
+   [
+    "Trust & Safety ML/Engineering lead or additional Safety engineer",
+    0.45
+   ],
+   [
+    "Developer Platform Product Manager or Senior Engineer",
+    0.3
+   ]
+  ],
+  "hit1": true,
+  "hit3": true,
+  "baseline": "engineering",
+  "baseline_hit": true,
+  "usd": 0.017558
+ }
+]
