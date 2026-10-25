@@ -57,6 +57,12 @@ Caveats:
 - **Candidates can pause or delete themselves at any time.** Delete also removes their resume file.
 - **Third-party links and emails are stripped** from founders' "someone like…" examples.
 
+## Next steps
+- **Bright Data company signals:** LinkedIn job posts and headcount for startups with no public job board.
+- **Bright Data public-profile sourcing:** an optional second pool, clearly labeled "not opted in". The agent never contacts these people; a founder who saves one gets the public LinkedIn link and reaches out themselves. The API is verified; the searches run as background jobs.
+- **Partner pools:** career centers, clubs, bootcamps and hackathons share our join link or upload lists of members who opted in.
+- **Learning from swipes:** use a founder's right and left swipes to re-weight their future matches.
+
 ## Run it
 ```bash
 uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
