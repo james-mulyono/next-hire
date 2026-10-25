@@ -28,6 +28,22 @@ STALE_DAYS = 14
 MISMATCH_MIN_POSTINGS = 2       # new postings in an unrelated role family before asking the founder
 
 
+RESEARCH_EVERY_S = 3 * 3600   # at most one web-research trip per company per 3 hours
+RESEARCH_EST_USD = 0.08
+
+
+def research_due(c):
+    """Research only when unsure, rarely, and only if this company's budget can take it. Returns (ok, reason)."""
+    last = float(store.get_meta(f"research_at:{c['id']}", 0))
+    if time.time() - last < RESEARCH_EVERY_S:
+        return False, f"researched {int((time.time() - last) / 60)} min ago"
+    used = store.spend_total(time.time() - 3600, c["id"])
+    if used + RESEARCH_EST_USD > company_budget(c):
+        return False, f"research would exceed this company's ${company_budget(c):.2f}/h budget"
+    ok, why = can_spend(c)
+    return ok, why
+
+
 def company_budget(c):
     return c["budget_hour"] if c.get("budget_hour") is not None else BUDGET_COMPANY_HOUR
 

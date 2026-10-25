@@ -69,6 +69,52 @@ def call_json(model, system, user, schema, purpose, company_id=None, effort="med
         raise LLMError("invalid JSON") from e
 
 
+WEB_SEARCH_USD = 0.01  # per search request
+
+RESEARCH_SYSTEM = """You research a company's recent public news to sharpen a forecast of its next hire.
+Search for company-level news only: funding rounds, product launches, new markets or offices, big customers,
+partnerships, changelog or blog posts, leadership announcements. Never research, name or profile individual
+employees or candidates. Prefer the last 90 days and the company's own site, blog and changelog, then reputable press.
+Reply with 2-5 short bullets, each '- YYYY-MM or "undated": fact (source domain)', then one line starting
+'Implication:' saying which hire this points to, or 'Implication: nothing new' if you found nothing useful."""
+
+
+def research(company, top_role, why_unsure):
+    """Web research when the agent is unsure. Returns (notes, usd). Plain text: server tools + free text, no schema."""
+    key = _load_key()
+    if not key:
+        raise LLMError("no ANTHROPIC_API_KEY")
+    client = anthropic.Anthropic(api_key=key, timeout=120.0, max_retries=1)
+    who = company["name"] + (f" ({company['domain']})" if company.get("domain") else "")
+    user = (f"Company: {who}\nCurrent best guess for next hire: {top_role}\n"
+            f"What would raise confidence: {why_unsure}\nFind recent public news that confirms or changes this.")
+    messages = [{"role": "user", "content": user}]
+    tools = [{"type": "web_search_20260209", "name": "web_search", "max_uses": 3}]
+    usd, resp = 0.0, None
+    try:
+        for _ in range(3):  # resume server-side loop on pause_turn, bounded
+            resp = client.messages.create(model=FORECAST_MODEL, max_tokens=3000, system=RESEARCH_SYSTEM,
+                                          tools=tools, messages=messages, output_config={"effort": "low"})
+            u = resp.usage
+            searches = getattr(getattr(u, "server_tool_use", None), "web_search_requests", 0) or 0
+            p_in, p_out = PRICES[FORECAST_MODEL]
+            call_usd = u.input_tokens / 1e6 * p_in + u.output_tokens / 1e6 * p_out + searches * WEB_SEARCH_USD
+            usd += call_usd
+            store.ex("INSERT INTO spend(ts, company_id, model, purpose, input_tokens, output_tokens, usd) VALUES(?,?,?,?,?,?,?)",
+                     (time.time(), company["id"], FORECAST_MODEL, "research", u.input_tokens, u.output_tokens, call_usd))
+            if resp.stop_reason != "pause_turn":
+                break
+            messages = [{"role": "user", "content": user}, {"role": "assistant", "content": resp.content}]
+    except anthropic.APIError as e:
+        raise LLMError(f"{type(e).__name__}: {str(e)[:160]}") from e
+    if resp.stop_reason == "refusal":
+        raise LLMError("model declined the request")
+    text = "\n".join(b.text for b in resp.content if b.type == "text").strip()
+    if not text:
+        raise LLMError("no research notes returned")
+    return text[:1500], usd
+
+
 _STR = {"type": "string"}
 _NUM = {"type": "number"}
 _STRS = {"type": "array", "items": _STR}
@@ -125,6 +171,8 @@ def forecast(company, postings, added, removed, site_text):
     lines = [f"Company: {company['name']}" + (f" ({company['domain']})" if company.get("domain") else "")]
     if company.get("judge_note"):
         lines.append(f"FOUNDER NOTE (first-hand): {company['judge_note']}")
+    if company.get("research_note"):
+        lines.append(f"RECENT PUBLIC NEWS (agent's own web research; dated, weigh by recency): {company['research_note']}")
     lines.append(f"Website text: {site_text[:2000] if site_text else '(no website text available)'}")
     if postings:
         lines.append(f"Open postings ({len(postings)}):")

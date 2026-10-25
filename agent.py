@@ -142,6 +142,9 @@ def process(c):
 
     # Forecast only when the inputs changed (input hashing: never pay twice for the same question).
     f_inputs = {"postings": sorted(p["title"] for p in postings), "site": site_text[:2000], "note": c["judge_note"] or ""}
+    c["research_note"] = store.get_meta(f"research_note:{c['id']}", "")
+    if c["research_note"]:  # only part of the hash once research found something, so existing forecasts aren't redone
+        f_inputs["research"] = c["research_note"]
     f_hash = _hash(f_inputs)
     fc = store.latest_forecast(c["id"])
     if f_hash != c["forecast_hash"] or fc is None:
@@ -185,6 +188,8 @@ def process(c):
             store.update_company(c["id"], match_hash=f_hash)
             store.log("HOLD", f"{c['name']}: forecast confidence {conf:.2f} < {governor.FORECAST_MIN_CONF:.2f} — not matching yet. "
                               f"Would change my mind: {fc['data']['what_would_raise_confidence']}", c["id"])
+        if investigate(c, top, fc, conf):
+            return
         minutes, idx = governor.stagnation_sleep(c)
         _sleep(c, minutes, "waiting for a stronger signal", idx)
         return
@@ -394,3 +399,26 @@ def match_brief(c, b, pool):
             m["uncited"] = True
     decide(c, b["scope"], matches, pool, usd, brief_id=b["id"])
     return None
+
+
+def investigate(c, top, fc, conf):
+    """Unsure and nobody is around to ask: go find new public information instead of waiting.
+    Returns True when the research found something, so the next cycle re-forecasts with it."""
+    ok, _ = governor.research_due(c)
+    if not ok:
+        return False
+    store.set_meta(f"research_at:{c['id']}", time.time())  # set first, so a failure can't turn into a retry loop
+    try:
+        notes, usd = llm.research(c, top["role"], fc["data"]["what_would_raise_confidence"])
+    except llm.LLMError as e:
+        store.log("ERROR", f"{c['name']}: web research failed ({e}) → will wait for signals instead", c["id"])
+        return False
+    implication = next((l for l in notes.splitlines() if l.lower().startswith("implication")), "").strip()
+    if not implication or "nothing new" in implication.lower():
+        store.log("RESEARCH", f"{c['name']}: unsure ({conf:.2f}), so searched recent public news on its own — nothing that changes the forecast (${usd:.3f})", c["id"])
+        return False
+    store.set_meta(f"research_note:{c['id']}", notes)
+    facts = [l.lstrip("-• ").strip() for l in notes.splitlines() if l.strip().startswith(("-", "•"))]
+    store.log("RESEARCH", f"{c['name']}: unsure ({conf:.2f}), so searched recent public news on its own — {'; '.join(facts[:2])[:260]} · {implication[:160]} → re-forecasting (${usd:.3f})", c["id"])
+    store.update_company(c["id"], sleep_until=0)
+    return True
