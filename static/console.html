@@ -86,29 +86,56 @@
   .budget { font-size:12px; color:var(--text3); margin-bottom:6px; }
   .bar { height:3px; background:#e6e6e6; margin-bottom:8px; } .bar i { display:block; height:100%; background:var(--brand); } .bar i.over { background:var(--bad); }
 
-  /* swipe deck */
-  .deck { padding:14px 20px 16px; background:var(--sunken); box-shadow:inset 0 1px 0 var(--divider); }
-  .deck-head { display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px; }
-  .deck-head b { font-weight:600; }
-  .stack { position:relative; height:250px; }
-  .sw { position:absolute; inset:0; background:var(--surface); padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.12); touch-action:pan-y; user-select:none; cursor:grab; overflow:hidden; }
-  .sw.behind { transform:translateY(6px) scale(.97); box-shadow:0 1px 2px rgba(0,0,0,.08); cursor:default; }
-  .sw.dragging { cursor:grabbing; transition:none; }
-  .sw.settle { transition:transform .2s ease; }
-  .sw-top { display:flex; justify-content:space-between; align-items:baseline; }
-  .sw-name { font-size:18px; font-weight:600; }
-  .sw-score { font-size:13px; font-weight:600; color:var(--brand); }
-  .sw-meta { font-size:13px; color:var(--text2); }
-  .sw-src { font-size:12px; color:var(--text3); margin:2px 0 10px; }
-  .sw-f { font-size:13px; margin-top:6px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-  .sw-f span { color:var(--text3); display:inline-block; min-width:76px; }
-  .stamp { position:absolute; top:14px; font-size:13px; font-weight:700; letter-spacing:.5px; padding:3px 8px; opacity:0; }
-  .stamp.yes { right:16px; color:#fff; background:var(--brand); } .stamp.no { left:16px; color:#fff; background:#6b6b6b; }
-  .deck-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
-  .deck-contact { width:100%; margin-top:8px; }
-  .deck-hint { font-size:12px; color:var(--text3); margin-top:6px; }
-  .deck-empty { font-size:13px; color:var(--text2); padding:24px 0; text-align:center; }
+  /* companies toolbar */
+  .toolbar { display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; padding:12px 16px; margin-bottom:16px; }
+  .search { flex:1 1 260px; min-width:200px; padding:8px 12px 8px 34px; border:1px solid #c9c9c9;
+            background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a8a8a' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 11px center; }
+  .search:focus, select:focus, input:focus { outline:2px solid var(--brand); outline-offset:-1px; }
+  .tabs { display:flex; gap:20px; flex-wrap:wrap; }
+  .tab { background:none; padding:6px 0; color:var(--text2); font-weight:600; box-shadow:none; }
+  .tab:hover { background:none; color:var(--text); }
+  .tab.on { color:var(--brand); box-shadow:inset 0 -2px 0 var(--brand); }
+  .tab .n { font-weight:400; color:var(--text3); margin-left:4px; }
+  .toolbar .count { color:var(--text3); font-size:13px; margin-left:auto; }
+  .empty { padding:40px; text-align:center; color:var(--text2); }
+  .review-btn { float:right; margin-top:-2px; }
 
+  /* swipe review modal */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; opacity:0; transition:opacity .18s; }
+  .overlay.show { opacity:1; }
+  .modal { width:min(460px, 100%); background:var(--surface); box-shadow:0 12px 40px rgba(0,0,0,.25); transform:translateY(12px); transition:transform .22s ease; }
+  .overlay.show .modal { transform:none; }
+  .m-head { display:flex; justify-content:space-between; align-items:flex-start; padding:16px 20px; box-shadow:inset 0 -1px 0 var(--divider); }
+  .m-title { font-size:16px; font-weight:600; } .m-sub { font-size:13px; color:var(--text2); }
+  .m-close { background:none; font-size:22px; line-height:1; padding:0 4px; color:var(--text2); } .m-close:hover { background:none; color:var(--text); }
+  .m-body { padding:20px; background:var(--sunken); }
+  .progress { height:3px; background:#e3e3e3; margin-bottom:16px; } .progress i { display:block; height:100%; background:var(--brand); transition:width .3s; }
+  .stack { position:relative; height:300px; perspective:1000px; }
+  .sw { position:absolute; inset:0; background:var(--surface); padding:20px 22px; box-shadow:0 2px 8px rgba(0,0,0,.12); user-select:none; touch-action:pan-y; cursor:grab; overflow:hidden; will-change:transform; }
+  .sw.next { transform:translateY(12px) scale(.95); opacity:.7; transition:transform .35s ease, opacity .35s ease; cursor:default; }
+  .sw.next.rise { transform:none; opacity:1; }
+  .sw.dragging { cursor:grabbing; transition:none; }
+  .sw.back { transition:transform .25s cubic-bezier(.2,.9,.3,1.3); }
+  .sw.fly { transition:transform .45s cubic-bezier(.3,.6,.2,1), opacity .45s ease; opacity:0; pointer-events:none; }
+  .sw.nudge { animation:nudge .35s; } @keyframes nudge { 25% { transform:translateX(-10px); } 75% { transform:translateX(10px); } }
+  .sw-top { display:flex; justify-content:space-between; align-items:baseline; }
+  .sw-name { font-size:22px; font-weight:600; }
+  .sw-score { font-size:14px; font-weight:600; color:var(--brand); }
+  .sw-meta { font-size:14px; color:var(--text2); margin-top:2px; }
+  .sw-src { font-size:12px; color:var(--text3); margin:4px 0 14px; }
+  .sw-f { font-size:14px; margin-top:10px; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .sw-f span { display:block; font-size:12px; color:var(--text3); }
+  .stamp { position:absolute; top:18px; font-size:15px; font-weight:700; letter-spacing:1px; padding:4px 10px; opacity:0; color:#fff; }
+  .stamp.yes { right:18px; background:var(--brand); transform:rotate(8deg); } .stamp.no { left:18px; background:#6b6b6b; transform:rotate(-8deg); }
+  .m-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+  .m-actions button { padding:11px; font-size:15px; }
+  .kbd { display:inline-block; font-size:11px; padding:1px 5px; margin-right:6px; background:rgba(0,0,0,.08); font-weight:600; }
+  .primary .kbd { background:rgba(255,255,255,.22); }
+  .m-foot { padding:14px 20px 18px; }
+  .m-foot input { width:100%; }
+  .m-hint { font-size:12px; color:var(--text3); margin-top:8px; }
+  .m-done { height:300px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; color:var(--text2); gap:6px; }
+  .m-done b { color:var(--text); font-size:16px; }
   .alert { background:#fff4e5; color:var(--warn); padding:10px 24px; font-size:13px; }
   @media (max-width: 1000px) { .top { grid-template-columns:1fr; } .metrics { grid-template-columns:repeat(3, 1fr); } .cards { grid-template-columns:1fr; } }
   @media (max-width: 560px) { main { padding:16px; } .metrics { grid-template-columns:repeat(2, 1fr); } nav label { display:none; } }
@@ -152,8 +179,15 @@
   </div>
 
   <div class="companies-head"><h2 style="margin:0">Companies</h2><button class="link" onclick="act.add()">Add company</button></div>
+  <div class="toolbar surface">
+    <input class="search" id="q" type="search" placeholder="Search companies or roles" autocomplete="off">
+    <div class="tabs" id="tabs"></div>
+    <select id="sort" aria-label="Sort"><option value="review">Most to review</option><option value="name">Name A–Z</option><option value="conf">Highest confidence</option></select>
+    <span class="count num" id="count"></span>
+  </div>
   <div class="cards" id="cards"></div>
 </main>
+<div id="modal-root"></div>
 <script>
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const hms = s => { const h = Math.floor(s/3600), m = Math.floor(s%3600/60); return h ? `${h}h ${String(m).padStart(2,'0')}m` : `${m}m ${String(s%60).padStart(2,'0')}s`; };
@@ -257,8 +291,7 @@ function card(c) {
       ${i.candidate_contact ? `<div class="contact">${esc(i.candidate_contact)}${i.linkedin ? ` · <a href="${esc(i.linkedin)}" target="_blank" rel="noopener">LinkedIn</a>` : ''}${i.link ? ` · <a href="${esc(i.link)}" target="_blank" rel="noopener">Portfolio</a>` : ''}${i.has_resume ? ` · <a href="/api/intro/${i.id}/resume" target="_blank">Resume</a>` : ''}
         · <button class="link" style="padding:0" onclick="act.repropose(${i.id})">Propose again</button></div>` : ''}`).join('') + `</div>`;
   }
-  h += `<div data-deck="${c.id}"></div>`;
-  h += `<div class="co-foot"><div class="budget num">Spend $${c.spend_hour.toFixed(3)} of $${c.budget_hour.toFixed(2)} per hour · $${c.spend_total.toFixed(3)} total · ${c.held} held back</div>
+  h += `<div class="co-foot">${c.deck.length ? `<button class="primary review-btn" onclick="openReview(${c.id})">Review ${c.deck.length} candidate${c.deck.length > 1 ? 's' : ''}</button>` : ''}<div class="budget num">Spend $${c.spend_hour.toFixed(3)} of $${c.budget_hour.toFixed(2)} per hour · $${c.spend_total.toFixed(3)} total · ${c.held} held back</div>
     <div class="bar"><i class="${pct >= 100 ? 'over' : ''}" style="width:${pct}%"></i></div>
     ${c.status === 'active' ? `<button class="link" onclick="act.run(${c.id})">Check now</button>` : ''}
     ${c.status === 'asking' ? `<button class="link" onclick="act.answer(${c.id})">Add website or job board</button>` : ''}
@@ -269,94 +302,160 @@ function card(c) {
   return h;
 }
 
-// ---------- swipe deck: kept as live DOM across refreshes so a drag is never interrupted ----------
-const decks = {};   // company id -> {key, node, items, idx}
-let dragging = false;
-
-function deckKey(c) { return c.deck.map(d => d.candidate_id).join(','); }
-
-function buildDeck(c) {
-  const node = document.createElement('div');
-  node.className = 'deck';
-  const d = {key: deckKey(c), node, items: c.deck.slice(), cid: c.id, name: c.name};
-  renderDeck(d);
-  return d;
+// ---------- filters ----------
+let lastState = null, query = '', tab = store.get('tab', 'all'), sortBy = store.get('sort', 'review');
+const TABS = [
+  ['all', 'All', c => true],
+  ['review', 'To review', c => c.deck.length > 0],
+  ['brief', 'Hiring briefs', c => c.source === 'brief'],
+  ['board', 'Job board', c => c.source !== 'brief' && c.status !== 'asking'],
+  ['founder', 'Needs founder', c => c.status === 'asking' || c.asks.length > 0],
+  ['judge', 'Judges', c => c.added_by === 'judge'],
+];
+function topConf(c) { const t = c.forecast && c.forecast.forecasts[0]; return t ? Number(t.confidence) : -1; }
+function haystack(c) {
+  const t = c.forecast && c.forecast.forecasts[0];
+  return [c.name, c.one_liner, c.domain, t && t.role, ...c.briefs.map(b => b.scope ? b.scope.role : b.description)].join(' ').toLowerCase();
 }
+function visible(companies) {
+  const fn = (TABS.find(t => t[0] === tab) || TABS[0])[2], q = query.trim().toLowerCase();
+  const out = companies.filter(c => fn(c) && (!q || haystack(c).includes(q)));
+  const cmp = { review: (a, b) => b.deck.length - a.deck.length || a.name.localeCompare(b.name),
+                name: (a, b) => a.name.localeCompare(b.name), conf: (a, b) => topConf(b) - topConf(a) }[sortBy];
+  return out.sort(cmp);
+}
+function renderTabs(companies) {
+  document.getElementById('tabs').innerHTML = TABS.map(([id, label, fn]) =>
+    `<button class="tab ${id === tab ? 'on' : ''}" data-tab="${id}">${label}<span class="n">${companies.filter(fn).length}</span></button>`).join('');
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; store.set('tab', tab); renderCompanies(); });
+}
+function renderCompanies() {
+  if (!lastState) return;
+  const all = lastState.companies, shown = visible(all);
+  renderTabs(all);
+  document.getElementById('count').textContent = `Showing ${shown.length} of ${all.length}`;
+  document.getElementById('cards').innerHTML = shown.length ? shown.map(card).join('') : `<div class="empty surface" style="grid-column:1/-1">No companies match. Try a different search or filter.</div>`;
+}
+document.getElementById('q').oninput = e => { query = e.target.value; renderCompanies(); };
+const sortSel = document.getElementById('sort');
+sortSel.value = sortBy;
+sortSel.onchange = e => { sortBy = e.target.value; store.set('sort', sortBy); renderCompanies(); };
 
-function swCard(it, behind) {
+// ---------- swipe review (modal) ----------
+let review = null;   // {cid, name, items, total, done, busy}
+
+function swCard(it, cls) {
   const gap = (it.gap || '').split('gap: ').pop();
-  return `<div class="sw ${behind ? 'behind' : ''}">
-    ${behind ? '' : '<div class="stamp yes">INTERESTED</div><div class="stamp no">PASS</div>'}
+  return `<div class="sw ${cls}">
+    <div class="stamp yes">INTERESTED</div><div class="stamp no">PASS</div>
     <div class="sw-top"><div class="sw-name">${esc(it.first_name)}</div><div class="sw-score">${Math.round(Number(it.score) * 100)}% match</div></div>
     <div class="sw-meta">${esc([it.seniority, it.location, it.availability].filter(Boolean).join(' · '))}</div>
     <div class="sw-src">${it.kind === 'proposed' ? 'Recommended by the agent' : 'Held back by the agent'} for ${esc(it.role || 'this role')}${it.seeded ? ' · sample profile' : ''}${it.has_resume ? ' · resume on file' : ''}</div>
-    ${it.roles ? `<div class="sw-f"><span>Wants</span>${esc(it.roles)}</div>` : ''}
+    ${it.roles ? `<div class="sw-f"><span>Looking for</span>${esc(it.roles)}</div>` : ''}
     <div class="sw-f"><span>Strengths</span>${esc(it.strengths)}</div>
-    ${it.kind === 'proposed' ? `<div class="sw-f"><span>Why</span>${esc(it.reason)}</div>` : `<div class="sw-f"><span>Gap</span>${esc(gap)}</div>`}
+    <div class="sw-f"><span>${it.kind === 'proposed' ? 'Why they fit' : 'What’s missing'}</span>${esc(it.kind === 'proposed' ? it.reason : gap)}</div>
   </div>`;
 }
 
-function renderDeck(d) {
-  const rest = d.items.length;
-  if (!rest) {
-    d.node.innerHTML = `<div class="deck-head"><b>Review candidates</b></div><div class="deck-empty">No one to review yet. The agent adds people here as it matches.</div>`;
+function openReview(cid) {
+  const c = lastState && lastState.companies.find(x => x.id === cid);
+  if (!c || !c.deck.length) return;
+  review = {cid, name: c.name, items: c.deck.slice(), total: c.deck.length, done: 0, busy: false, liked: 0};
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-label="Review candidates for ${esc(c.name)}">
+    <div class="m-head"><div><div class="m-title">Review candidates</div><div class="m-sub">${esc(c.name)} · contact details stay hidden until both sides say yes</div></div>
+      <button class="m-close" aria-label="Close" onclick="closeReview()">×</button></div>
+    <div class="m-body"><div class="progress"><i id="prog"></i></div><div class="stack" id="stack"></div>
+      <div class="m-actions"><button id="b-pass"><span class="kbd">←</span>Pass</button><button class="primary" id="b-yes">Interested<span class="kbd" style="margin:0 0 0 6px">→</span></button></div></div>
+    <div class="m-foot"><input id="m-email" type="email" placeholder="Your email, shared only if they accept" value="${esc(store.get('founderContact', ''))}">
+      <div class="m-hint">Click Pass or Interested, press ← or →, or drag the card.</div></div>
+  </div></div>`;
+  const ov = document.getElementById('ov');
+  requestAnimationFrame(() => ov.classList.add('show'));
+  ov.onclick = e => { if (e.target === ov) closeReview(); };
+  document.getElementById('b-pass').onclick = () => decide('left');
+  document.getElementById('b-yes').onclick = () => decide('right');
+  document.getElementById('m-email').oninput = e => store.set('founderContact', e.target.value.trim());
+  drawStack();
+}
+
+function closeReview() {
+  const ov = document.getElementById('ov');
+  review = null;
+  if (!ov) return;
+  ov.classList.remove('show');
+  setTimeout(() => { document.getElementById('modal-root').innerHTML = ''; refresh(); }, 180);
+}
+
+function drawStack() {
+  const stack = document.getElementById('stack');
+  document.getElementById('prog').style.width = `${review.done / review.total * 100}%`;
+  if (!review.items.length) {
+    stack.innerHTML = `<div class="m-done"><b>All caught up</b>You reviewed ${review.total} candidate${review.total > 1 ? 's' : ''} and requested ${review.liked} intro${review.liked === 1 ? '' : 's'}.<br>We’ll let you know when they reply.</div>`;
+    document.getElementById('b-pass').disabled = document.getElementById('b-yes').disabled = true;
     return;
   }
-  d.node.innerHTML = `<div class="deck-head"><b>Review candidates</b><span class="sub num">${rest} to review</span></div>
-    <div class="stack">${d.items[1] ? swCard(d.items[1], true) : ''}${swCard(d.items[0], false)}</div>
-    <div class="deck-actions"><button data-dir="left">Pass</button><button class="primary" data-dir="right">Interested</button></div>
-    <input class="deck-contact" type="email" placeholder="Your email, shared only if they accept" value="${esc(store.get('founderContact', ''))}">
-    <div class="deck-hint">Drag the card or use the buttons. Contact details stay hidden until both sides say yes.</div>`;
-  const top = d.node.querySelector('.sw:not(.behind)');
-  d.node.querySelector('.deck-contact').oninput = e => store.set('founderContact', e.target.value.trim());
-  d.node.querySelectorAll('[data-dir]').forEach(b => b.onclick = () => commit(d, top, b.dataset.dir));
+  stack.innerHTML = (review.items[1] ? swCard(review.items[1], 'next') : '') + swCard(review.items[0], 'current');
+  attachDrag(stack.querySelector('.sw.current'));
+}
+
+function setStamps(el, dx) {
+  el.querySelector('.stamp.yes').style.opacity = Math.max(0, Math.min(1, dx / 100));
+  el.querySelector('.stamp.no').style.opacity = Math.max(0, Math.min(1, -dx / 100));
+}
+
+function attachDrag(el) {
   let x0 = null, dx = 0;
-  const stamps = () => { top.querySelector('.stamp.yes').style.opacity = Math.max(0, Math.min(1, dx / 90)); top.querySelector('.stamp.no').style.opacity = Math.max(0, Math.min(1, -dx / 90)); };
-  top.addEventListener('pointerdown', e => { x0 = e.clientX; dx = 0; dragging = true; top.setPointerCapture(e.pointerId); top.classList.add('dragging'); });
-  top.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; top.style.transform = `translateX(${dx}px) rotate(${dx / 24}deg)`; stamps(); });
+  el.addEventListener('pointerdown', e => { if (review.busy) return; x0 = e.clientX; dx = 0; el.setPointerCapture(e.pointerId); el.classList.remove('back'); el.classList.add('dragging'); });
+  el.addEventListener('pointermove', e => { if (x0 === null) return; dx = e.clientX - x0; el.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`; setStamps(el, dx); });
   const end = () => {
     if (x0 === null) return;
-    x0 = null; dragging = false; top.classList.remove('dragging');
-    if (Math.abs(dx) > 90) commit(d, top, dx > 0 ? 'right' : 'left');
-    else { top.classList.add('settle'); top.style.transform = ''; dx = 0; stamps(); }
+    x0 = null; el.classList.remove('dragging');
+    if (Math.abs(dx) > 110) decide(dx > 0 ? 'right' : 'left');
+    else { el.classList.add('back'); el.style.transform = ''; setStamps(el, 0); }
   };
-  top.addEventListener('pointerup', end); top.addEventListener('pointercancel', end);
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
 }
 
-async function commit(d, top, dir) {
-  const it = d.items[0], input = d.node.querySelector('.deck-contact');
-  const contact = input.value.trim();
+async function decide(dir) {
+  if (!review || review.busy || !review.items.length) return;
+  const el = document.querySelector('#stack .sw.current'), next = document.querySelector('#stack .sw.next');
+  const email = document.getElementById('m-email'), contact = email.value.trim();
   if (dir === 'right' && !contact) {
-    top.classList.add('settle'); top.style.transform = '';
-    top.querySelectorAll('.stamp').forEach(s => s.style.opacity = 0);
-    input.focus(); input.placeholder = 'Add your email first, then swipe right';
+    el.classList.add('back'); el.style.transform = ''; setStamps(el, 0);
+    el.classList.remove('nudge'); void el.offsetWidth; el.classList.add('nudge');
+    email.focus(); email.placeholder = 'Add your email first, then choose Interested';
     return;
   }
-  top.classList.add('settle');
-  top.style.transform = `translateX(${dir === 'right' ? 520 : -520}px) rotate(${dir === 'right' ? 18 : -18}deg)`;
+  review.busy = true;
+  const it = review.items[0], sign = dir === 'right' ? 1 : -1;
+  setStamps(el, sign * 100);
+  el.classList.remove('back', 'dragging');
+  el.classList.add('fly');
+  el.style.transform = `translateX(${sign * 130}%) translateY(-30px) rotate(${sign * 24}deg)`;
+  if (next) next.classList.add('rise');
   try {
-    await post(`/api/company/${d.cid}/swipe`, {candidate_id: it.candidate_id, dir, contact});
-    d.items.shift(); d.key = d.items.map(x => x.candidate_id).join(',');
-  } catch (e) { /* alert already shown; put the card back */ }
-  setTimeout(() => renderDeck(d), 200);
+    await fetch(`/api/company/${review.cid}/swipe`, {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({candidate_id: it.candidate_id, dir, contact})}).then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Error'); });
+    review.items.shift(); review.done += 1; if (dir === 'right') review.liked += 1;
+  } catch (e) {
+    alert(e.message);
+  }
+  setTimeout(() => { if (!review) return; review.busy = false; drawStack(); }, 430);
 }
 
-function mountDecks(companies) {
-  companies.forEach(c => {
-    const slot = document.querySelector(`[data-deck="${c.id}"]`);
-    if (!slot) return;
-    let d = decks[c.id];
-    if (!d || d.key !== deckKey(c)) d = decks[c.id] = buildDeck(c);
-    slot.replaceWith(d.node);
-  });
-}
+document.addEventListener('keydown', e => {
+  if (!review) return;
+  if (e.key === 'Escape') return closeReview();
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowLeft') { e.preventDefault(); decide('left'); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); decide('right'); }
+});
 
 async function refresh() {
-  // Never re-render under the founder's finger or while they type their email.
-  if (dragging || (document.activeElement && document.activeElement.closest && document.activeElement.closest('.deck'))) return;
   let s;
   try { s = await (await fetch('/api/state')).json(); } catch (e) { return; }
-  if (dragging) return;
+  lastState = s;
   document.getElementById('uptime').textContent = hms(s.uptime_s);
   document.getElementById('watching').textContent = s.counts.watching;
   document.getElementById('cands').textContent = s.counts.candidates;
@@ -366,8 +465,7 @@ async function refresh() {
   document.getElementById('accepted').textContent = s.counts.accepted;
   document.getElementById('nollm').hidden = s.llm;
   renderLog(s.decisions); renderPool(s.pool, s.counts.joined); renderSpark(s.spend.series, s.spend.day_cap);
-  document.getElementById('cards').innerHTML = s.companies.map(card).join('');
-  mountDecks(s.companies);
+  renderCompanies();
 }
 refresh(); setInterval(refresh, 1500);
 </script>
