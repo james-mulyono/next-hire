@@ -134,8 +134,12 @@ FORECAST_SCHEMA = {
             "required": ["role", "one_liner", "must_haves", "nice_to_haves", "seniority", "location"],
             "additionalProperties": False},
         "what_would_raise_confidence": _STR,
+        "what_they_value": {
+            "type": "object",
+            "properties": {"values": _STRS, "key_skills": _STRS, "source": _STR},
+            "required": ["values", "key_skills", "source"], "additionalProperties": False},
     },
-    "required": ["company_one_liner", "forecasts", "top_role_spec", "what_would_raise_confidence"],
+    "required": ["company_one_liner", "forecasts", "top_role_spec", "what_would_raise_confidence", "what_they_value"],
     "additionalProperties": False,
 }
 
@@ -146,7 +150,8 @@ Rules:
 - Calibrate confidence honestly: above 0.7 only with at least two independent pieces of evidence pointing the same way. Thin signals mean low confidence.
 - A founder note is first-hand information and outweighs inference.
 - Return 1-3 forecasts sorted by confidence (highest first). top_role_spec describes the top forecast as a short role spec.
-- what_would_raise_confidence: the one signal that would most change your mind."""
+- what_would_raise_confidence: the one signal that would most change your mind.
+- what_they_value: from the company's own careers/about/values pages (and postings), the 3-5 values or working styles they say they care about (keep their wording, e.g. "ship fast", "high ownership") and the 3-6 skills that come up most across their postings and pages. source: which pages these came from, or "postings only" / "not stated" if the pages say nothing. Never invent values the pages don't state."""
 
 MATCH_SCHEMA = {
     "type": "object",
@@ -174,6 +179,8 @@ def forecast(company, postings, added, removed, site_text):
     if company.get("research_note"):
         lines.append(f"RECENT PUBLIC NEWS (agent's own web research; dated, weigh by recency): {company['research_note']}")
     lines.append(f"Website text: {site_text[:2000] if site_text else '(no website text available)'}")
+    if company.get("pages_text"):
+        lines.append(f"Careers / about / values pages: {company['pages_text']}")
     if postings:
         lines.append(f"Open postings ({len(postings)}):")
         for p in postings[:60]:

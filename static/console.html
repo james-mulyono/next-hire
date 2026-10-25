@@ -279,6 +279,10 @@ function card(c) {
       h += `<div class="co-sec"><div class="eyebrow">Predicted next hire</div><div class="role">${esc(t.role)}<span class="conf">${Number(t.confidence).toFixed(2)} confidence</span></div>
         <div class="why">${esc(t.why)}</div><ul class="ev">${t.evidence.slice(0, 3).map(e => `<li>${esc(e)}</li>`).join('')}</ul>
         ${shown.slice(1).map(o => `<div class="why">Also possible: ${esc(o.role)} (${Number(o.confidence).toFixed(2)})</div>`).join('')}</div>`;
+      const v = f.what_they_value;
+      if (v && (v.values.length || v.key_skills.length)) h += `<div class="co-sec"><div class="eyebrow">What they look for <span style="color:var(--text3)">· ${esc(v.source)}</span></div>
+        ${v.values.length ? `<div class="reqs"><b>Values:</b> ${esc(v.values.join(' · '))}</div>` : ''}
+        ${v.key_skills.length ? `<div class="reqs"><b>Key skills:</b> ${esc(v.key_skills.join(' · '))}</div>` : ''}</div>`;
     }
   } else if (c.status === 'asking') {
     h += `<div class="co-sec notice">No public job board or website found. Waiting for the founder to share one.</div>`;

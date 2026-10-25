@@ -64,6 +64,29 @@ def detect_board(slug):
     return None, None
 
 
+CULTURE_PATHS = ("/careers", "/about", "/company", "/values", "/culture", "/jobs")
+
+
+def fetch_culture_pages(domain, per_page=1200, limit=4000):
+    """The company's own careers/about/values pages: where it says what it values and who it wants. Public pages only."""
+    if not domain:
+        return ""
+    base = domain if domain.startswith("http") else f"https://{domain}"
+    out, seen = [], set()
+    for path in CULTURE_PATHS:
+        try:
+            text = fetch_site_text(base.rstrip("/") + path, limit=per_page)
+        except Exception:
+            continue
+        key = text[:200]
+        if len(text) > 200 and key not in seen:  # skip redirects back to the same page
+            seen.add(key)
+            out.append(f"[{path}] {text}")
+        if sum(len(x) for x in out) >= limit:
+            break
+    return " ".join(out)[:limit]
+
+
 def fetch_site_text(domain, limit=2000):
     if not domain:
         return ""

@@ -142,6 +142,9 @@ def process(c):
 
     # Forecast only when the inputs changed (input hashing: never pay twice for the same question).
     f_inputs = {"postings": sorted(p["title"] for p in postings), "site": site_text[:2000], "note": c["judge_note"] or ""}
+    c["pages_text"] = culture_pages(c)
+    if c["pages_text"]:
+        f_inputs["pages"] = c["pages_text"]
     c["research_note"] = store.get_meta(f"research_note:{c['id']}", "")
     if c["research_note"]:  # only part of the hash once research found something, so existing forecasts aren't redone
         f_inputs["research"] = c["research_note"]
@@ -213,7 +216,10 @@ def process(c):
         store.log("PAUSE", f"{c['name']}: budget — {why}. Pausing matching until budget frees up.", c["id"])
         _sleep(c, 10, None)
         return
-    spec = fc["data"]["top_role_spec"]
+    spec = dict(fc["data"]["top_role_spec"])
+    if fc["data"].get("what_they_value"):  # match on what the company says it values, not just the role
+        spec["company_values"] = fc["data"]["what_they_value"]["values"]
+        spec["company_key_skills"] = fc["data"]["what_they_value"]["key_skills"]
     try:
         data, usd = llm.match(c, spec, pool)
     except llm.LLMError as e:
@@ -422,3 +428,21 @@ def investigate(c, top, fc, conf):
     store.log("RESEARCH", f"{c['name']}: unsure ({conf:.2f}), so searched recent public news on its own — {'; '.join(facts[:2])[:260]} · {implication[:160]} → re-forecasting (${usd:.3f})", c["id"])
     store.update_company(c["id"], sleep_until=0)
     return True
+
+
+PAGES_EVERY_S = 6 * 3600
+
+
+def culture_pages(c):
+    """Careers/about/values page text, re-read at most every 6 hours (cached in meta)."""
+    if not c.get("domain"):
+        return ""
+    at = float(store.get_meta(f"pages_at:{c['id']}", 0))
+    if time.time() - at < PAGES_EVERY_S:
+        return store.get_meta(f"pages:{c['id']}", "")
+    store.set_meta(f"pages_at:{c['id']}", time.time())
+    text = signals.fetch_culture_pages(c["domain"])
+    store.set_meta(f"pages:{c['id']}", text)
+    if text:
+        store.log("OBSERVE", f"{c['name']}: read their careers/about pages ({len(text)} chars) to learn what they value", c["id"])
+    return text
