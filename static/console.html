@@ -100,10 +100,21 @@
   .empty { padding:40px; text-align:center; color:var(--text2); }
   .review-btn { float:right; margin-top:-2px; }
 
+  /* review filters (job-board style facets) */
+  .m-grid { display:grid; grid-template-columns:250px minmax(0, 1fr); }
+  .filters { padding:16px 18px; box-shadow:inset -1px 0 0 var(--divider); max-height:600px; overflow-y:auto; font-size:13px; }
+  .filters h4 { font-size:12px; font-weight:600; color:var(--text2); margin:14px 0 6px; } .filters h4:first-of-type { margin-top:0; }
+  .filters input[type=search], .filters select { width:100%; font-size:13px; }
+  .fopt { display:flex; align-items:center; gap:8px; padding:2px 0; cursor:pointer; }
+  .fopt input { width:auto; margin:0; } .fopt .c { margin-left:auto; color:var(--text3); }
+  .fhead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+  .fhead b { font-size:14px; } .fhead button { padding:0; font-size:12px; }
+  .fmatch { font-size:12px; color:var(--text2); margin-bottom:10px; }
+  @media (max-width: 760px) { .m-grid { grid-template-columns:1fr; } .filters { max-height:260px; box-shadow:inset 0 -1px 0 var(--divider); } }
   /* swipe review modal */
   .overlay { position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:16px; opacity:0; transition:opacity .18s; }
   .overlay.show { opacity:1; }
-  .modal { width:min(460px, 100%); background:var(--surface); box-shadow:0 12px 40px rgba(0,0,0,.25); transform:translateY(12px); transition:transform .22s ease; }
+  .modal { width:min(940px, 100%); max-height:calc(100vh - 32px); overflow-y:auto; background:var(--surface); box-shadow:0 12px 40px rgba(0,0,0,.25); transform:translateY(12px); transition:transform .22s ease; }
   .overlay.show .modal { transform:none; }
   .m-head { display:flex; justify-content:space-between; align-items:flex-start; padding:16px 20px; box-shadow:inset 0 -1px 0 var(--divider); }
   .m-title { font-size:16px; font-weight:600; } .m-sub { font-size:13px; color:var(--text2); }
@@ -352,6 +363,32 @@ const TOP_SCHOOLS = [/stanford/, /\bmit\b|massachusetts institute/, /harvard/, /
   /georgia tech|georgia institute/, /\buiuc\b|urbana|illinois/, /university of michigan|umich/, /university of washington|\buw\b/, /waterloo/, /toronto/,
   /oxford/, /cambridge/, /\beth\b|zurich/, /\biit\b/, /tsinghua/, /\bnus\b|national university of singapore/, /\bucsb\b|santa barbara/, /\buc davis\b/, /\busc\b|southern california/, /\bnyu\b|new york university/, /brown/, /duke/, /northwestern/, /rice university/, /ut austin|texas at austin/, /purdue/];
 const topSchool = s => !!s && TOP_SCHOOLS.some(re => re.test(s.toLowerCase()));
+const SKILLS = ['Python', 'TypeScript', 'JavaScript', 'Go', 'Rust', 'Java', 'C++', 'React', 'Node', 'SQL', 'Postgres', 'Kubernetes', 'AWS',
+  'Machine learning', 'LLMs', 'Data analysis', 'A/B testing', 'Statistics', 'Playwright', 'Browser automation', 'Infrastructure', 'Security',
+  'Distributed systems', 'Mobile', 'iOS', 'Design', 'Figma', 'Product', 'Sales', 'Marketing', 'DevRel', 'Recruiting', 'Customer success', 'Email / SMTP'];
+const SKILL_RE = { 'Go': /\bgo(lang)?\b/i, 'Java': /\bjava\b(?!script)/i, 'C++': /c\+\+/i, 'Node': /\bnode(\.js)?\b/i, 'SQL': /\bsql\b/i, 'AWS': /\baws\b/i,
+  'Machine learning': /machine learning|\bml\b/i, 'LLMs': /\bllms?\b|\bagents?\b|\bai\b/i, 'A/B testing': /a\/b|experiment/i, 'Data analysis': /data (analy|science)|analytics|dashboards?/i,
+  'Infrastructure': /infra|platform|devops|\bsre\b/i, 'Distributed systems': /distributed|scal(e|ing|ed)/i, 'Mobile': /mobile|android|\bios\b/i, 'iOS': /\bios\b|swift/i,
+  'Product': /\bproduct\b/i, 'Sales': /sales|\bae\b|closed|arr\b/i, 'DevRel': /devrel|developer rel|advocate/i, 'Email / SMTP': /smtp|dkim|spf|email|deliverab/i,
+  'Customer success': /customer success|support/i, 'Browser automation': /browser automation|scrap|puppeteer|playwright|chrome/i };
+const textOf = it => [it.strengths, it.roles, it.github_summary, it.school].join(' ');
+const skillsOf = it => SKILLS.filter(k => (SKILL_RE[k] || new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '\\b', 'i')).test(textOf(it)));
+const rolesOf = it => (it.roles || '').split(/[,;/]| or /).map(r => r.trim().toLowerCase()).filter(r => r.length > 1);
+const locOf = it => /remote/i.test(it.location || '') ? 'Remote' : /\bsf\b|san francisco|bay area/i.test(it.location || '') ? 'SF Bay Area' : (it.location || '').trim() || 'Not stated';
+const FACETS = [['skills', 'Skills', skillsOf], ['roles', 'Wants to work as', rolesOf], ['sen', 'Seniority', it => [it.seniority || 'Not stated']],
+                ['avail', 'Availability', it => [it.availability || 'Not stated']], ['loc', 'Location', it => [locOf(it)]]];
+function emptyFilters() { return {q: '', min: 0, top: false, gh: false, cv: false, rec: false, skills: new Set(), roles: new Set(), sen: new Set(), avail: new Set(), loc: new Set()}; }
+function passes(it, f) {
+  if (f.q && !textOf(it).toLowerCase().includes(f.q.toLowerCase())) return false;
+  if (Number(it.score) < f.min) return false;
+  if (f.top && !topSchool(it.school)) return false;
+  if (f.gh && !it.github_summary) return false;
+  if (f.cv && !it.has_resume) return false;
+  if (f.rec && it.kind !== 'proposed') return false;
+  for (const [key, , fn] of FACETS) { const want = f[key]; if (want.size && !fn(it).some(v => want.has(v))) return false; }
+  return true;
+}
+const filtersOn = f => f.q || f.min || f.top || f.gh || f.cv || f.rec || FACETS.some(([k]) => f[k].size);
 
 function swCard(it, cls) {
   const gap = (it.gap || '').split('gap: ').pop();
@@ -371,18 +408,22 @@ function swCard(it, cls) {
 function openReview(cid) {
   const c = lastState && lastState.companies.find(x => x.id === cid);
   if (!c || !c.deck.length) return;
-  const topOnly = store.get('topOnly', '0') === '1';
-  const items = topOnly ? c.deck.filter(d => topSchool(d.school)) : c.deck.slice();
-  review = {cid, name: c.name, all: c.deck.slice(), items, total: items.length, done: 0, busy: false, liked: 0, topOnly};
+  const f = emptyFilters();
+  f.top = store.get('topOnly', '0') === '1';
+  review = {cid, name: c.name, all: c.deck.slice(), items: [], total: 0, done: 0, busy: false, liked: 0, decided: new Set(), f};
   const root = document.getElementById('modal-root');
   root.innerHTML = `<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-label="Review candidates for ${esc(c.name)}">
     <div class="m-head"><div><div class="m-title">Review candidates</div><div class="m-sub">${esc(c.name)} · contact details stay hidden until both sides say yes</div></div>
       <button class="m-close" aria-label="Close" onclick="closeReview()">×</button></div>
-    <div class="m-body"><div class="progress"><i id="prog"></i></div><div class="stack" id="stack"></div>
-      <div class="m-actions"><button id="b-pass"><span class="kbd">←</span>Pass</button><button class="primary" id="b-yes">Interested<span class="kbd" style="margin:0 0 0 6px">→</span></button></div></div>
-    <div class="m-foot"><input id="m-email" type="email" placeholder="Your email, shared only if they accept" value="${esc(store.get('founderContact', ''))}">
-      <div class="m-hint">Click Pass or Interested, press ← or →, or drag the card.</div>
-      <label class="m-hint" style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="m-top" style="width:auto" ${review.topOnly ? 'checked' : ''}> Top schools only</label></div>
+    <div class="m-grid">
+      <aside class="filters" id="filters"></aside>
+      <div>
+        <div class="m-body"><div class="fmatch" id="fmatch"></div><div class="progress"><i id="prog"></i></div><div class="stack" id="stack"></div>
+          <div class="m-actions"><button id="b-pass"><span class="kbd">←</span>Pass</button><button class="primary" id="b-yes">Interested<span class="kbd" style="margin:0 0 0 6px">→</span></button></div></div>
+        <div class="m-foot"><input id="m-email" type="email" placeholder="Your email, shared only if they accept" value="${esc(store.get('founderContact', ''))}">
+          <div class="m-hint">Click Pass or Interested, press ← or →, or drag the card.</div></div>
+      </div>
+    </div>
   </div></div>`;
   const ov = document.getElementById('ov');
   requestAnimationFrame(() => ov.classList.add('show'));
@@ -390,15 +431,43 @@ function openReview(cid) {
   document.getElementById('b-pass').onclick = () => decide('left');
   document.getElementById('b-yes').onclick = () => decide('right');
   document.getElementById('m-email').oninput = e => store.set('founderContact', e.target.value.trim());
-  document.getElementById('m-top').onchange = e => {
-    review.topOnly = e.target.checked; store.set('topOnly', review.topOnly ? '1' : '0');
-    const decided = new Set(review.all.filter(d => !review.items.includes(d)).map(d => d.candidate_id));
-    review.items = review.all.filter(d => !decided.has(d.candidate_id) && (!review.topOnly || topSchool(d.school)));
-    review.total = review.done + review.items.length;
-    document.getElementById('b-pass').disabled = document.getElementById('b-yes').disabled = false;
-    drawStack();
-  };
-  drawStack();
+  drawFilters();
+  applyFilters();
+}
+
+function drawFilters() {
+  const f = review.f, pool = review.all.filter(it => !review.decided.has(it.candidate_id));
+  const count = (fn, v) => pool.filter(it => fn(it).includes(v)).length;
+  const toggle = (id, label, on) => `<label class="fopt"><input type="checkbox" data-t="${id}" ${on ? 'checked' : ''}>${label}</label>`;
+  let h = `<div class="fhead"><b>Filters</b>${filtersOn(f) ? '<button class="link" id="f-clear">Clear all</button>' : ''}</div>
+    <input type="search" id="f-q" placeholder="Keyword, e.g. Kubernetes" value="${esc(f.q)}">
+    <h4>Minimum match</h4><select id="f-min">${[[0, 'Any'], [0.5, '50%+'], [0.7, '70%+'], [0.85, '85%+']].map(([v, l]) => `<option value="${v}" ${f.min === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <h4>Profile</h4>${toggle('rec', 'Recommended by the agent', f.rec)}${toggle('top', 'Top schools only', f.top)}${toggle('gh', 'Has verified GitHub', f.gh)}${toggle('cv', 'Has resume', f.cv)}`;
+  for (const [key, label, fn] of FACETS) {
+    const values = [...new Set(pool.flatMap(fn))].map(v => [v, count(fn, v)]).sort((a, b) => b[1] - a[1]).slice(0, key === 'skills' ? 14 : 8);
+    if (!values.length) continue;
+    h += `<h4>${label}</h4>` + values.map(([v, n]) => `<label class="fopt"><input type="checkbox" data-f="${key}" value="${esc(v)}" ${f[key].has(v) ? 'checked' : ''}><span>${esc(v)}</span><span class="c">${n}</span></label>`).join('');
+  }
+  const box = document.getElementById('filters');
+  box.innerHTML = h;
+  box.querySelectorAll('[data-f]').forEach(cb => cb.onchange = () => { const set = f[cb.dataset.f]; cb.checked ? set.add(cb.value) : set.delete(cb.value); applyFilters(); });
+  box.querySelectorAll('[data-t]').forEach(cb => cb.onchange = () => { f[cb.dataset.t] = cb.checked; if (cb.dataset.t === 'top') store.set('topOnly', cb.checked ? '1' : '0'); applyFilters(); });
+  document.getElementById('f-min').onchange = e => { f.min = Number(e.target.value); applyFilters(); };
+  const q = document.getElementById('f-q');
+  q.oninput = e => { f.q = e.target.value; applyFilters(false); };
+  const clear = document.getElementById('f-clear');
+  if (clear) clear.onclick = () => { review.f = emptyFilters(); drawFilters(); applyFilters(); };
+}
+
+function applyFilters(redrawPanel = true) {
+  const f = review.f;
+  review.items = review.all.filter(it => !review.decided.has(it.candidate_id) && passes(it, f));
+  review.total = review.done + review.items.length;
+  const left = review.all.length - review.decided.size;
+  document.getElementById('fmatch').textContent = filtersOn(f) ? `${review.items.length} of ${left} candidates match your filters` : `${left} candidates to review`;
+  document.getElementById('b-pass').disabled = document.getElementById('b-yes').disabled = !review.items.length;
+  if (redrawPanel) { const y = document.getElementById('filters').scrollTop; drawFilters(); document.getElementById('filters').scrollTop = y; }
+  if (!review.busy) drawStack();
 }
 
 function closeReview() {
@@ -411,9 +480,9 @@ function closeReview() {
 
 function drawStack() {
   const stack = document.getElementById('stack');
-  document.getElementById('prog').style.width = `${review.done / review.total * 100}%`;
-  if (!review.items.length && review.topOnly && !review.done) {
-    stack.innerHTML = `<div class="m-done"><b>No one from a top school here yet</b>Untick “Top schools only” to see everyone the agent matched.</div>`;
+  document.getElementById('prog').style.width = `${review.total ? review.done / review.total * 100 : 0}%`;
+  if (!review.items.length && filtersOn(review.f) && review.decided.size < review.all.length) {
+    stack.innerHTML = `<div class="m-done"><b>No one matches these filters</b>Loosen or clear the filters to see more of the people the agent matched.</div>`;
     return;
   }
   if (!review.items.length) {
@@ -463,17 +532,17 @@ async function decide(dir) {
   try {
     await fetch(`/api/company/${review.cid}/swipe`, {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({candidate_id: it.candidate_id, dir, contact})}).then(async r => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Error'); });
-    review.items.shift(); review.done += 1; if (dir === 'right') review.liked += 1;
+    review.items.shift(); review.done += 1; review.decided.add(it.candidate_id); if (dir === 'right') review.liked += 1;
   } catch (e) {
     alert(e.message);
   }
-  setTimeout(() => { if (!review) return; review.busy = false; drawStack(); }, 430);
+  setTimeout(() => { if (!review) return; review.busy = false; applyFilters(); }, 430);
 }
 
 document.addEventListener('keydown', e => {
   if (!review) return;
   if (e.key === 'Escape') return closeReview();
-  if (e.target.tagName === 'INPUT') return;
+  if ((e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') || e.target.tagName === 'SELECT') return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); decide('left'); }
   if (e.key === 'ArrowRight') { e.preventDefault(); decide('right'); }
 });
