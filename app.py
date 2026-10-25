@@ -301,6 +301,54 @@ def _company_or_404(cid):
     return c
 
 
+DECK_FIELDS = "ca.id AS candidate_id, ca.first_name, ca.seniority, ca.location, ca.availability, ca.roles, ca.strengths, ca.seeded, " \
+              "(ca.resume_file IS NOT NULL) AS has_resume"
+
+
+def _deck(cid):
+    """Swipe deck for a founder: agent-proposed intros first, then people the agent held back (founder may override)."""
+    proposed = store.q(f"SELECT 'proposed' AS kind, i.id AS intro_id, i.role, i.score, i.reason, '' AS gap, {DECK_FIELDS} "
+                       "FROM intros i JOIN candidates ca ON ca.id=i.candidate_id "
+                       "WHERE i.company_id=? AND i.status='proposed' AND ca.status='active' ORDER BY i.score DESC", (cid,))
+    held = store.q(f"SELECT 'held' AS kind, NULL AS intro_id, h.role, h.score, '' AS reason, h.reason AS gap, {DECK_FIELDS} "
+                   "FROM holds h JOIN candidates ca ON ca.id=h.candidate_id "
+                   "WHERE h.company_id=? AND ca.status='active' "
+                   "AND NOT EXISTS (SELECT 1 FROM intros i WHERE i.company_id=h.company_id AND i.candidate_id=h.candidate_id) "
+                   "ORDER BY h.score DESC LIMIT 15", (cid,))
+    return proposed + held
+
+
+@app.post("/api/company/{cid}/swipe")
+def swipe(cid: int, p: dict = Body(...)):
+    """Founder swipes on a candidate. Right = request the intro (candidate still has to say yes). Left = pass for good."""
+    c = _company_or_404(cid)
+    cand = store.one("SELECT * FROM candidates WHERE id=?", (int(p.get("candidate_id") or 0),))
+    if not cand:
+        raise HTTPException(404, "Unknown candidate")
+    right = p.get("dir") == "right"
+    contact = _clean(p.get("contact"), 120)
+    if right and not contact:
+        raise HTTPException(400, "Your contact is required to request an intro")
+    now = time.time()
+    intro = store.one("SELECT * FROM intros WHERE company_id=? AND candidate_id=? ORDER BY id DESC LIMIT 1", (cid, cand["id"]))
+    if intro and intro["status"] != "proposed":
+        raise HTTPException(400, f"Already {intro['status']}")
+    status = "requested" if right else "passed"
+    if intro:
+        store.ex("UPDATE intros SET status=?, founder_contact=?, updated_at=? WHERE id=?", (status, contact or None, now, intro["id"]))
+    else:  # swiping on someone the agent held back
+        hold = store.one("SELECT * FROM holds WHERE company_id=? AND candidate_id=?", (cid, cand["id"])) or {}
+        store.ex("INSERT INTO intros(company_id, candidate_id, role, score, reason, status, founder_contact, created_at, updated_at) "
+                 "VALUES(?,?,?,?,?,?,?,?,?)", (cid, cand["id"], hold.get("role") or "", hold.get("score") or 0,
+                                               "Founder picked from the held-back list", status, contact or None, now, now))
+    store.ex("DELETE FROM holds WHERE company_id=? AND candidate_id=?", (cid, cand["id"]))
+    if right:
+        store.log("INTRO", f"{c['name']} swiped right on {cand['first_name']} → waiting for {cand['first_name']}'s yes", cid)
+    else:
+        store.log("SKIP", f"{c['name']} passed on {cand['first_name']} → recorded, the agent won't propose them again", cid)
+    return {"ok": True}
+
+
 @app.post("/api/intro/{intro_id}/request")
 def request_intro(intro_id: int, p: dict = Body(...)):
     intro = store.one("SELECT * FROM intros WHERE id=?", (intro_id,))
@@ -544,7 +592,8 @@ def state():
             "source": "brief" if active else "forecast", "briefs": briefs,
             "suggestion": governor.forecast_suggestion(fc, active),
             "asks": [{"kind": a["kind"], "message": a["message"]} for a in store.open_asks(c["id"])],
-            "intros": intros, "held": store.one("SELECT COUNT(*) AS n FROM holds WHERE company_id=?", (c["id"],))["n"],
+            "intros": [i for i in intros if i["status"] != "passed"], "deck": _deck(c["id"]),
+            "held": store.one("SELECT COUNT(*) AS n FROM holds WHERE company_id=?", (c["id"],))["n"],
             "spend_hour": round(store.spend_total(now - 3600, c["id"]), 4), "spend_total": round(store.spend_total(0, c["id"]), 4),
             "budget_hour": governor.company_budget(c),
         })
@@ -564,7 +613,7 @@ def state():
             "watching": sum(1 for c in companies if c["status"] == "active"),
             "candidates": store.one("SELECT COUNT(*) AS n FROM candidates WHERE status='active'")["n"],
             "joined": store.one("SELECT COUNT(*) AS n FROM candidates WHERE seeded=0")["n"],
-            "proposed": store.one("SELECT COUNT(*) AS n FROM intros")["n"],
+            "proposed": store.one("SELECT COUNT(*) AS n FROM intros WHERE status != 'passed'")["n"],
             "held": store.one("SELECT COUNT(*) AS n FROM holds")["n"],
             "accepted": store.one("SELECT COUNT(*) AS n FROM intros WHERE status='accepted'")["n"],
             "decisions": store.one("SELECT COUNT(*) AS n FROM decisions")["n"],
